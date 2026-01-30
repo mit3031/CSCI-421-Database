@@ -1,6 +1,9 @@
 package DMLParser;
 
 import java.sql.SQLSyntaxErrorException;
+import Common.Command;
+import DMLParser.Insert;
+import DMLParser.Select;
 import Common.Logger;
 
 public class ParserDML {
@@ -31,9 +34,13 @@ public class ParserDML {
         switch(firstWord){
             case "select":
                 // do select parsing
+                Command select = new Select();
+                select.run(commandSegments);
                 break;
             case "insert":
                 // do create stuff
+                Command insert = new Insert();
+                insert.run(commandSegments);
                 break;
             default:
                 throw new SQLSyntaxErrorException("Invalid Command, " + firstWord + " is an unknown command");
@@ -43,7 +50,14 @@ public class ParserDML {
         return true;
     }
 
-    
+    public static boolean runSelect(String[] command){
+        // for right now, select is pretty basic
+        return true;
+    }
+
+    public static boolean runInsert(String[] command){
+        return true;
+    }
 
     public static void main(String[] args){
         Logger.initDebug(args);
