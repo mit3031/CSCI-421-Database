@@ -23,7 +23,7 @@ public class DoubleDefinition extends AttributeDefinition {
 
     @Override
     public boolean isValid(String obj) {
-        if (this.getIsPossibleNull() && obj.equalsIgnoreCase("null")) {
+        if (this.getIsPossibleNull() && obj.equals("null")) {
             return true;
         }
 
