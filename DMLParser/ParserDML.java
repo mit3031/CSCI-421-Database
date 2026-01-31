@@ -50,15 +50,6 @@ public class ParserDML {
         return true;
     }
 
-    public static boolean runSelect(String[] command){
-        // for right now, select is pretty basic
-        return true;
-    }
-
-    public static boolean runInsert(String[] command){
-        return true;
-    }
-
     public static void main(String[] args){
         Logger.initDebug(args);
         try {
