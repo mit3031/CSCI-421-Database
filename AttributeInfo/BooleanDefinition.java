@@ -10,7 +10,7 @@ public class BooleanDefinition extends AttributeDefinition {
 
     private static boolean isBoolean(String s) {
         if (s == null) return false;
-        return s.equalsIgnoreCase("true") || s.equalsIgnoreCase("false");
+        return s.equals("true") || s.equals("false");
     }
 
     @Override
