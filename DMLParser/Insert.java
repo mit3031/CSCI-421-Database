@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import AttributeInfo.AttributeDefinition;
+
 public class Insert implements Command {
 
     // INSERT <tableName> VALUES ( <row1>, <row2>, ... );
@@ -66,6 +68,7 @@ public class Insert implements Command {
         // TODO:
         // for each row
         // make sure each attribute type matches with the catalog said it was (including null)
+        List<AttributeDefinition> definitions = null; // template for later
 
         // TODO:
         // NOTE: to make this step more time efficient the storage manager should probably have a
