@@ -11,14 +11,6 @@ import java.util.List;
 
 public class Insert implements Command {
 
-//    INTEGER — Standard integer (non-negative for parsing simplicity)
-//• DOUBLE — Standard double-precision floating point (non-negative)
-//• BOOLEAN — Accepts True or False. Must be stored as the language's boolean type, not
-//    as strings.
-//            • CHAR(N) — Fixed-length string of exactly N characters
-//• VARCHAR(N) — Variable-length string with maximum N characters. Must be stored at its
-//    actual size, not padded to maximum.
-
     // INSERT <tableName> VALUES ( <row1>, <row2>, ... );
     // a row is space delimited so for Student(name, id) we might do
     // INSERT Student VALUES ("jacob" 47, "kim" 88);
