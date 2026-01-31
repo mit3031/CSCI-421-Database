@@ -62,9 +62,9 @@ public class ParserDML {
     public static void main(String[] args){
         Logger.initDebug(args);
         try {
-            ParserDML.runCommand("SELECT * FROM table");
+            ParserDML.runCommand("SElect * from pupppies;");
         } catch (SQLSyntaxErrorException e) {
-            Logger.log("Error: " + e.getMessage());
+            System.out.println("Error: " + e.getMessage());
         }
 
     }
