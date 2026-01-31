@@ -33,7 +33,7 @@ public class Logger {
      */
     public static void log(String str){
         if (Logger.debugOn){
-            System.out.println(str);
+            System.out.println("[DEBUG] " + str);
         }
     }
 
