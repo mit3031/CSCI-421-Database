@@ -48,6 +48,18 @@ public abstract class AttributeDefinition {
     // moral of the story this should probably be the main method of checking types
     public abstract boolean isValid(String obj);
 
-
+    /*
+       This function returns the size of whatever type of attribute is being defined
+     */
+    public int getByteSize() {
+        switch (type) {
+            case INTEGER: return Integer.BYTES;
+            case DOUBLE:  return Double.BYTES;
+            case BOOLEAN: return 1;
+            case CHAR:    return maxLength;
+            case VARCHAR: return maxLength; // upper bound for record sizing of varchar
+            default: throw new RuntimeException("Unknown type");
+        }
+    }
 
 }

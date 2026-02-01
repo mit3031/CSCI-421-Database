@@ -1,0 +1,55 @@
+package Catalog;
+
+import java.util.List;
+import AttributeInfo.Attribute;
+
+public class TableSchema {
+    private String tableName;
+    private List<Attribute> attributes;
+    private int rootPageID;
+
+    public TableSchema(String tableName, List<Attribute> attributes, int rootPageID) {
+        this.tableName = tableName;
+        this.attributes = attributes;
+        this.rootPageID = rootPageID;
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public List<Attribute> getAttributes() {
+        return attributes;
+    }
+
+    public int getRootPageID() {
+        return rootPageID;
+    }
+
+    public void setRootPageID(int id) {
+        this.rootPageID = id;
+    }
+
+    public int getRecordSize() {
+        int size = 0;
+        for (Attribute attr : attributes) {
+            size += attr.getDefinition().getByteSize();
+        }
+        return size;
+    }
+
+    public void addAttribute(Attribute attr) {
+        for (Attribute a : attributes) {
+            if (a.getName().equalsIgnoreCase(attr.getName())) {
+                throw new RuntimeException("Attribute already exists");
+            }
+        }
+        attributes.add(attr);
+    }
+
+    public void dropAttribute(String attrName) {
+        attributes.removeIf(a ->
+                a.getName().equalsIgnoreCase(attrName)
+        );
+    }
+}
