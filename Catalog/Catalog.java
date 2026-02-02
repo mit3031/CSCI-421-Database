@@ -35,7 +35,7 @@ public class Catalog {
     private final Map<String, TableSchema> tables;
     private final String catalogPath;
 
-    // NOTE: firstFreePage stored here for Phase 1 simplicity
+    // NOTE: firstFreePage stored here for simplicity
     // May move to StorageManager metadata in later phases.
     private int pageSize;        // Required for DB restart
     private int firstFreePage;   // Location of first empty page (-1 if none)
@@ -65,7 +65,7 @@ public class Catalog {
 
     public void setFirstFreePage(int pageId) {
         this.firstFreePage = pageId;
-        saveToDisk(); // important for crash safety
+        saveToDisk();
     }
 
     /*
@@ -77,6 +77,9 @@ public class Catalog {
         if (tables.containsKey(name)) {
             throw new RuntimeException("Table already exists: " + name);
         }
+
+        // rootPageID is stored but not assigned in Phase 1
+        // It will be set by the StorageManager in Phase 2
         tables.put(name, table);
         saveToDisk();
     }

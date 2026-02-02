@@ -48,7 +48,7 @@ public class CatalogTest {
         Attribute a2 = new Attribute("name", varcharDef, "NULL");
         attrs.add(a2);
 
-        TableSchema table = new TableSchema("myTable", attrs, 0);
+        TableSchema table = new TableSchema("myTable", attrs);
 
         //STEP 3: Add table to catalog
         catalog.addTable(table);
@@ -116,7 +116,7 @@ public class CatalogTest {
         // Create a new table to test altering
         List<Attribute> alterAttrs = new ArrayList<>();
         alterAttrs.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false), null));
-        TableSchema alterTable = new TableSchema("alterTable", alterAttrs, 0);
+        TableSchema alterTable = new TableSchema("alterTable", alterAttrs);
         alterCatalog.addTable(alterTable);
 
         // Add the new column
