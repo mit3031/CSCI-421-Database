@@ -48,7 +48,7 @@ public class Catalog {
         new File(dbPath).mkdirs();
 
         this.pageSize = pageSize;      // Default if no file exists
-        this.firstFreePage = -1;       // Default empty list
+        this.firstFreePage = 0;       // by default first free page is at index 0
         loadFromDisk();
     }
 
@@ -213,6 +213,7 @@ public class Catalog {
         File file = new File(catalogPath);
         if (!file.exists()) {
             // No catalog yet so fresh database
+            saveToDisk(); // since this is a new database we're good to store its metadata
             return;
         }
 
