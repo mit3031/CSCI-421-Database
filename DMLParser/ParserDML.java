@@ -57,7 +57,6 @@ public class ParserDML {
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
         }
-
     }
 
 }

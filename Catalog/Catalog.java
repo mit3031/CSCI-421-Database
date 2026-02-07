@@ -48,7 +48,7 @@ public class Catalog {
         new File(dbPath).mkdirs();
 
         this.pageSize = pageSize;      // Default if no file exists
-        this.firstFreePage = -1;       // Default empty list
+        this.firstFreePage = 0;       // by default first free page is at index 0
         loadFromDisk();
     }
 
@@ -88,6 +88,37 @@ public class Catalog {
 
     public TableSchema getTable(String tableName) {
         return tables.get(tableName.toLowerCase());
+    }
+
+
+    /**
+     * Note: Attribute acts as an extension to attribute defintion, this does not get the actual instance of the
+     * attributes, just lets you gather info on them
+     * @param tableName: name of the table attributes you want to get info on
+     * @return list of the attributes for this table
+     */
+    public List<Attribute> getAttribute(String tableName){
+        return tables.get(tableName.toLowerCase()).getAttributes();
+    }
+
+    /**
+     * Gets the address of the first page instance
+     * @param tableName: name of the table
+     * @return the address of the first table
+     */
+    public int getAddressOfPage(String tableName) throws Exception {
+        TableSchema table = tables.get(tableName.toLowerCase());
+
+        if (table == null){
+            throw new Exception("Table does not exists yet");
+        }
+
+        if (table.getRootPageID() == -1){
+            // abort, something is wrong
+            throw new Exception("Table does not exist yet");
+        }
+
+        return table.getRootPageID() * pageSize;
     }
 
     public boolean tableExists(String tableName) {
@@ -182,6 +213,7 @@ public class Catalog {
         File file = new File(catalogPath);
         if (!file.exists()) {
             // No catalog yet so fresh database
+            saveToDisk(); // since this is a new database we're good to store its metadata
             return;
         }
 
