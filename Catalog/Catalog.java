@@ -148,8 +148,10 @@ public class Catalog {
 
             // Write global database info first
             out.writeInt(this.pageSize);
+            //Write number of freePages for reading it in
+            out.writeInt(this.firstFreePage.size());
             for (int i = 0; i<this.firstFreePage.size(); i++) {
-                out.writeInt(this.firstFreePage.getFirst());
+                out.writeInt(this.firstFreePage.get(i));
             }
 
             // Writes how many tables exist in the catalog
@@ -237,7 +239,8 @@ public class Catalog {
 
             // Read global database info first
             this.pageSize = in.readInt();
-            for (int i = 0; i < this.firstFreePage.size(); i++) {
+            int numFree = in.readInt();
+            for (int i = 0; i < numFree; i++) {
                 this.firstFreePage.addFirst(in.readInt());
             }
 
