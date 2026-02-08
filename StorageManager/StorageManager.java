@@ -11,12 +11,12 @@ public class StorageManager {
     private String dbPath = "";
     private String databaseFilePath = "";
 
-        storageManager = new StorageManager();
-    }
+
     public CreateTable(TableSchema table){
         Catalog catalog = Catalog.getInstance();
         int firstFreePage = catalog.getFirstFreePage();
-        catalog.setFirstFreePage(firstFreePage+catalog.getPageSize());
+        catalog.removeFirstFreePage();
+        table.setRootPageID(firstFreePage);
         BufferManager bufferManager = BufferManager.getInstance();
         //buffer manager creates the new page
         bufferManager.newPage(firstFreePage);
@@ -27,11 +27,11 @@ public class StorageManager {
         Catalog catalog = Catalog.getInstance();
         BufferManager bufferManager = BufferManger.getInstance();
         bufferManager.dropTable(table);
-        //call to getaddressofPage func in catalog
-        catalog.dropTable()
+        catalog.dropTable(table.getTableName())
+        // add this page to free page list
+        catalog.addFirstFreePage(table.getRootPageId());
     }
 
-    private StorageManager() {
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
         this.dbPath = dbPath;
 

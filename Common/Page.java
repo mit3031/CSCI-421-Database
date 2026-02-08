@@ -1,7 +1,5 @@
 
 public class Page {
-    private static Page page;
-    private int index;
     private int numRows;
     private int address;
     private int nextPage;
@@ -9,8 +7,7 @@ public class Page {
     private int freeSpaceEnd;
     private Map<int, int> records;
 
-    public void createPage(int index, int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd) {
-        this.index = index;
+    public Page(int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd) {
         this.numRows = numRows;
         this.address = address;
         this.nextPage = nextPage;
@@ -19,11 +16,11 @@ public class Page {
     }
 
     public int getNextPage(){
-        return nextPage;
+        return this.nextPage;
     }
 
     public void addRecord(int recordAddress, int length){
-        records.put(recordAddress, length);
+        this.records.put(recordAddress, length);
     }
 
 }
