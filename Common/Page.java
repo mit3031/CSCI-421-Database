@@ -1,5 +1,7 @@
 package Common;
 
+import java.time.Instant;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,6 +12,7 @@ public class Page {
     private int freeSpaceStart;
     private int freeSpaceEnd;
     private Map<Integer, Integer> records;
+    private Instant lastUsed;
 
     public Page(int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd) {
         this.numRows = numRows;
@@ -19,6 +22,7 @@ public class Page {
         this.freeSpaceStart = freeSpaceStart;
         this.freeSpaceEnd = freeSpaceEnd;
         records = new HashMap<Integer, Integer>();
+        lastUsed = Instant.now();
     }
 
     public int getNextPage(){
