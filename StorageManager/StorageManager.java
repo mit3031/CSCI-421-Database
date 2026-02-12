@@ -1,10 +1,11 @@
 package StorageManager;
 
-import Page;
-import BufferManager;
+import Common.Page;
 import Catalog.Catalog;
+import Catalog.TableSchema;
 import java.io.File;
 import Common.Logger;
+
 
 public class StorageManager {
     private static StorageManager storageManager;
@@ -12,25 +13,28 @@ public class StorageManager {
     private String databaseFilePath = "";
 
 
-    public CreateTable(TableSchema table){
-        Catalog catalog = Catalog.getInstance();
-        int firstFreePage = catalog.getFirstFreePage();
-        catalog.removeFirstFreePage();
-        table.setRootPageID(firstFreePage);
-        BufferManager bufferManager = BufferManager.getInstance();
-        //buffer manager creates the new page
-        bufferManager.newPage(firstFreePage);
-        catalog.addTable(table);
-    }
+//    public void CreateTable(TableSchema table){
+//        Catalog catalog = Catalog.getInstance();
+//        int firstFreePage = catalog.getFirstFreePage();
+//        catalog.removeFirstFreePage();
+//        table.setRootPageID(firstFreePage);
+//        //buffer manager creates the new page
+//        bufferManager.newPage(firstFreePage);
+//        catalog.addTable(table);
+//    }
+//
+//    public void DropTable(TableSchema table) {
+//        Catalog catalog = Catalog.getInstance();
+//        BufferManager bufferManager = BufferManger.getInstance();
+//        bufferManager.dropTable(table);
+//        catalog.dropTable(table.getTableName());
+//        // add this page to free page list
+//        catalog.addFirstFreePage(table.getRootPageId());
+//    }
 
-    public DropTable(TableSchema table) {
-        Catalog catalog = Catalog.getInstance();
-        BufferManager bufferManager = BufferManger.getInstance();
-        bufferManager.dropTable(table);
-        catalog.dropTable(table.getTableName())
-        // add this page to free page list
-        catalog.addFirstFreePage(table.getRootPageId());
-    }
+//    public select(TableSchema table){
+//
+//    }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
         this.dbPath = dbPath;

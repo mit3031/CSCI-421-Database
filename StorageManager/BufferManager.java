@@ -1,6 +1,15 @@
+import Common.Page;
+
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import Catalog.Catalog;
+import java.util.HashMap;
+import java.util.Map;
+
 public class BufferManager {
-    private final Map<int, Page> bufferPages;
+    private final Map<Integer, Page> bufferPages;
     private static BufferManager bufferManager;
 
     public static void createBufferManager() {
@@ -11,42 +20,43 @@ public class BufferManager {
 
     public void newPage(int Address) {
         Catalog catalog = Catalog.getInstance();
-        Page newPage = new Page(catalog.getNumTables()+1, 0, Address, null, Address, Address+catalog.pageSize);
+        Page newPage = new Page(catalog.getNumTables()+1, 0, Address, null, Address, Address+ catalog.getPageSize());
         this.bufferPages.put(Address,newPage);
     }
 
-    public void dropTable(String tableName){
+    public void dropTable(String tableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
         int pageAddress = catalog.getAddressOfPage(tableName);
         //add read from page if page not in buffer
         Page page = this.bufferPages.get(pageAddress);
-        if page == null {
+        if (page == null) {
             page = readPage(pageAddress);
         }
         //while nextpage not null get rid of page in bufferpages
-        while (pageAddress.getNextPage() != null) {
+        while (page.getNextPage() != -1) {
             this.bufferPages.remove(pageAddress);
-            page = page.getNextPage();
+            //page = page.getNextPage();
         }
     }
 
-    public void writePage(Page page){
+    public void writePage(Page page) throws IOException {
         FileOutputStream fos = new FileOutputStream(catalogPath);
-        out = new DataOutputStream(fos);
+        DataOutputStream out = new DataOutputStream(fos);
 
         //writes number of entries
-        out.WriteInt(page.numRows)
+
+        out.writeInt(page.getNumRows());
 
         //write start of free space
-        out.WriteInt(page.freeSpaceEnd);
+        out.writeInt(page.getFreeSpaceEnd());
 
         //write length and location of records
-        for (int i = 0; i < page.numRows; i++) {
-            out.WriteInt(page.)
+        for (int i = 0; i < page.getNumRows(); i++) {
+//            out.writeInt(page.)
         }
     }
 
-    public void readPage(Page page){
+    public Page readPage(int pageAddress){
 
     }
 }

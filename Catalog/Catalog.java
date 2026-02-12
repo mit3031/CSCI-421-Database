@@ -38,7 +38,7 @@ public class Catalog {
     // NOTE: firstFreePage stored here for simplicity
     // May move to StorageManager metadata in later phases.
     private int pageSize;        // Required for DB restart
-    private LinkedList<int> firstFreePage;   // list of empty pages
+    private LinkedList<Integer> firstFreePage;   // list of empty pages
 
     private Catalog(String dbPath, int pageSize) {
         this.tables = new HashMap<>();
@@ -48,7 +48,7 @@ public class Catalog {
         new File(dbPath).mkdirs();
 
         this.pageSize = pageSize;      // Default if no file exists
-        this.firstFreePage = new LinkedList<int>();       // by default empty list of pages
+        this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
         loadFromDisk();
     }
 
