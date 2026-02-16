@@ -1,3 +1,4 @@
+import Common.Logger;
 import DDLParser.ParserDDL;
 
 import java.util.Scanner;
@@ -78,10 +79,12 @@ public class JottQL {
                         keywords[0].equals("ALTER") ||
                         keywords[0].equals("DROP")){
                     //DDL parser handles
+                    Logger.log("Command Sent to DDL Parser");
                     ParserDDL.parseCommand(message);
 
                 } else if (keywords[0].equals("SELECT")){
                     //DML parser handles
+                    Logger.log(("Command Sent to DDL Parser"));
                 }
                 else{ //does not match any of our cases
                     System.out.println("Unrecognized command in following input:\n" + message);
@@ -90,7 +93,7 @@ public class JottQL {
             }
         }
         catch(Exception e){
-            //TODO do something here or move inside while true loop so we can loop gracefully
+            //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
             }
 
 
