@@ -6,6 +6,7 @@ import Catalog.TableSchema;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import Common.Logger;
 
@@ -104,6 +105,10 @@ public class StorageManager {
         Catalog catalog = Catalog.getInstance();
         List<Page> pages = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
         return pages;
+    }
+
+    public void insert(String tableName, List<List<Objects>> rows){
+        BufferManager bufferManager = BufferManager.getInstance();
     }
 
     public static void main(String[] args){

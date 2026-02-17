@@ -88,6 +88,10 @@ public class BufferManager {
         return pages;
     }
 
+    public void insert(String tableName, List<List<Object>> rows){
+
+    }
+
 //    private void addPageToBuffer(Page page) {
 //        //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
 //        this.bufferPages.put(page.getPageAddress(), page);
