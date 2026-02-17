@@ -46,6 +46,7 @@ public class BufferManager {
         Catalog catalog = Catalog.getInstance();
         Page newPage = new Page(catalog.getNumTables()+1, Address, -1, Address+(Integer.BYTES*3),Address+ catalog.getPageSize(), true, tableName);
         //add check for buffersize if buffersize exceeded get rid of last page used.
+        //should be able to use addPageToBuffer(page) here
         this.bufferPages.put(Address,newPage);
     }
 
@@ -85,11 +86,6 @@ public class BufferManager {
 
     }
 
-//    private void addPageToBuffer(Page page) {
-//        //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
-//        this.bufferPages.put(page.getPageAddress(), page);
-//    }
-
     /**
      * Finds the address of the least recently used page and returns it
      * @return the address of the least recently used page
@@ -119,6 +115,22 @@ public class BufferManager {
     private void removeLRUPage(){
         Integer lruPage = getLeastRecentlyUsedPage();
         this.bufferPages.remove(lruPage);
+    }
+
+    /**
+     * Adds a page to the buffer. If the page doesn't fit in the buffer the least recently used page is removed
+     * from the buffer and the new page is added
+     * @param page the page to add to the buffer
+     */
+    private void addPageToBuffer(Page page) {
+        //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
+        int pageSize = Catalog.getInstance().getPageSize();
+        int currBufferSize = this.bufferPages.size() * pageSize;
+        if (currBufferSize + pageSize > this.bufferSize)
+        {
+            removeLRUPage();
+        }
+        this.bufferPages.put(page.getPageAddress(), page);
     }
 
     private void writePage(Page page) throws IOException {
@@ -254,7 +266,7 @@ public class BufferManager {
                 page.addRecord(record);
                 currentPage.seek(start);
             }
-//            this.bufferPages.addPageToBuffer(page)
+            addPageToBuffer(page);
             return page;
         }
     }
