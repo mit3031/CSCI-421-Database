@@ -89,10 +89,12 @@ public class CreateTable implements Command {
                     Logger.log("Create Table found an attribute with no definition!");
                     definition = null;
                 }
+                if(attrName == null){
+                    throw new SQLSyntaxErrorException("Attribute does not have name!");
+                }
 
                 attributes.add(new Attribute(attrName, definition, null));
 
-                //TODO add attribute to list
             }
             catch (IndexOutOfBoundsException e){
                 Logger.log("CREATE Syntax Error: Out of bounds parsing attribute definitions");

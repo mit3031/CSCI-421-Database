@@ -42,7 +42,7 @@ public class JottQL {
         }
         System.out.println("Welcome to JottQL!");
 
-        try {
+
             String dbLocation = args[0];
             int pageSize = Integer.parseInt(args[1]);
             int bufferSize = Integer.parseInt(args[2]);
@@ -56,6 +56,7 @@ public class JottQL {
             Scanner input = new Scanner(System.in);
 
             while (true) {
+                try {
                 boolean commandReady = false;
                 String message = "";
                 while(!commandReady) {
@@ -90,12 +91,11 @@ public class JottQL {
                     System.out.println("Unrecognized command in following input:\n" + message);
                 }
 
-            }
-        }
-        catch(Exception e){
-            //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
-            }
+                }
+                catch(Exception e){
+                    //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
+                }
 
-
+            }
     }
 }
