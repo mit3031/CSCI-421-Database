@@ -4,6 +4,7 @@ import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -94,17 +95,30 @@ public class StorageManager {
     }
 
     /**
-     * Currently operates as a select start returning all pages corresponding to a table
+     * Returns the first page associated with a table based on the provided table name.
      * This method assumes that tableName is a valid table
      * @param tableName The name of the table to select from
      * @return A list of pages associated with the table
      * @throws Exception Throws an exception if the table does not exist, or if there is an issue reading the page
      */
-    public List<Page> select(String tableName) throws Exception {
+    public Page selectFirstPage(String tableName) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
         Catalog catalog = Catalog.getInstance();
-        List<Page> pages = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
-        return pages;
+        Page page = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
+        return page;
+    }
+
+
+    /**
+     * Returns a page in a table with an address and a table name.
+     * @param address Address of the table
+     * @param tableName Name of the table
+     * @return the page at the address
+     * @throws IOException If there is an issue reading the page
+     */
+    public Page select(int address, String tableName) throws IOException {
+        BufferManager bufferManager = BufferManager.getInstance();
+        return bufferManager.select(address, tableName);
     }
 
     public void insert(String tableName, List<List<Objects>> rows){

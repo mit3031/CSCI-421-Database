@@ -71,21 +71,14 @@ public class BufferManager {
     }
 
     /**
-     * Currently only operates as select *
-     * In this format the select just returns a list of the pages that correspond to the table
-     * @param address The address of the first page
+     * The select operation simply gets a page containing a table based on the provided address and table name and returns it
+     * @param address The address of the page
      * @param tableName The name of the table
-     * @return a list of pages corresponding to the table
+     * @return a page corresponding to the table and address
      */
-    public List<Page> select(int address, String tableName) throws IOException {
-        List<Page> pages = new ArrayList<>();
+    public Page select(int address, String tableName) throws IOException {
         Page page = readPage(address, tableName);
-        pages.add(page);
-        while(page.getNextPage() != -1) {
-            page = readPage(page.getNextPage(), tableName);
-            pages.add(page);
-        }
-        return pages;
+        return page;
     }
 
     public void insert(String tableName, List<List<Object>> rows){
@@ -208,9 +201,9 @@ public class BufferManager {
     }
 
     private Page readPage(int pageAddress, String tableName) throws IOException{
-//        if (this.bufferPages.containsKey(pageAddress)) {
-//            return this.bufferPages.get(pageAddress);
-//        }
+        if (this.bufferPages.containsKey(pageAddress)) {
+            return this.bufferPages.get(pageAddress);
+        }
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")){
             currentPage.seek(pageAddress);
             Catalog catalog = Catalog.getInstance();
