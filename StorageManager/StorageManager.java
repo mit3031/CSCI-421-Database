@@ -4,6 +4,9 @@ import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 import Common.Logger;
 
 
@@ -31,10 +34,6 @@ public class StorageManager {
 //        catalog.dropTable(table.getTableName());
 //        // add this page to free page list
 //        catalog.addFirstFreePage(table.getRootPageId());
-//    }
-
-//    public select(TableSchema table){
-//
 //    }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
@@ -91,6 +90,20 @@ public class StorageManager {
     // Getter for the singleton instance
     public static StorageManager getStorageManager() {
         return storageManager;
+    }
+
+    /**
+     * Currently operates as a select start returning all pages corresponding to a table
+     * This method assumes that tableName is a valid table
+     * @param tableName The name of the table to select from
+     * @return A list of pages associated with the table
+     * @throws Exception Throws an exception if the table does not exist, or if there is an issue reading the page
+     */
+    public List<Page> select(String tableName) throws Exception {
+        BufferManager bufferManager = BufferManager.getInstance();
+        Catalog catalog = Catalog.getInstance();
+        List<Page> pages = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
+        return pages;
     }
 
     public static void main(String[] args){

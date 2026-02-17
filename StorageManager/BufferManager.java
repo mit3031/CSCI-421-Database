@@ -1,16 +1,14 @@
 package StorageManager;
 
 import AttributeInfo.Attribute;
-import AttributeInfo.AttributeTypeEnum;
 import Common.Page;
 import Catalog.TableSchema;
 
-import java.io.DataOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import Catalog.Catalog;
 import java.util.HashMap;
@@ -70,6 +68,60 @@ public class BufferManager {
                 page = readPage(pageAddress, tableName);
             }
         }
+    }
+
+    /**
+     * Currently only operates as select *
+     * In this format the select just returns a list of the pages that correspond to the table
+     * @param address The address of the first page
+     * @param tableName The name of the table
+     * @return a list of pages corresponding to the table
+     */
+    public List<Page> select(int address, String tableName) throws IOException {
+        List<Page> pages = new ArrayList<>();
+        Page page = readPage(address, tableName);
+        pages.add(page);
+        while(page.getNextPage() != -1) {
+            page = readPage(page.getNextPage(), tableName);
+            pages.add(page);
+        }
+        return pages;
+    }
+
+//    private void addPageToBuffer(Page page) {
+//        //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
+//        this.bufferPages.put(page.getPageAddress(), page);
+//    }
+
+    /**
+     * Finds the address of the least recently used page and returns it
+     * @return the address of the least recently used page
+     */
+    private Integer getLeastRecentlyUsedPage(){
+        Integer leastRecentlyUsedPage = null;
+        Instant leastRecentlyUsedTime = null;
+        for (Integer address : this.bufferPages.keySet()) {
+            Page page = this.bufferPages.get(address);
+            if (leastRecentlyUsedPage == null) {
+                leastRecentlyUsedTime = page.getLastUsed();
+                leastRecentlyUsedPage = address;
+            } else{
+                if (leastRecentlyUsedTime.isAfter(page.getLastUsed()))
+                {
+                    leastRecentlyUsedTime = page.getLastUsed();
+                    leastRecentlyUsedPage = address;
+                }
+            }
+        }
+        return leastRecentlyUsedPage;
+    }
+
+    /**
+     * Removes the least recently used page from the buffer
+     */
+    private void removeLRUPage(){
+        Integer lruPage = getLeastRecentlyUsedPage();
+        this.bufferPages.remove(lruPage);
     }
 
     private void writePage(Page page) throws IOException {
@@ -152,6 +204,9 @@ public class BufferManager {
     }
 
     private Page readPage(int pageAddress, String tableName) throws IOException{
+//        if (this.bufferPages.containsKey(pageAddress)) {
+//            return this.bufferPages.get(pageAddress);
+//        }
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")){
             currentPage.seek(pageAddress);
             Catalog catalog = Catalog.getInstance();
@@ -202,6 +257,7 @@ public class BufferManager {
                 page.addRecord(record);
                 currentPage.seek(start);
             }
+//            this.bufferPages.addPageToBuffer(page)
             return page;
         }
     }

@@ -51,9 +51,15 @@ public class Page {
     public void setTableName(String tableName) {this.tableName = tableName;}
 
     public ArrayList<Object> getRecord(int index){ return this.records.get(index);}
+    public Instant getLastUsed(){
+        return lastUsed;
+    }
 
     public void addRecord(ArrayList<Object> recordData){
         this.records.add(recordData);
     }
 
+    public void updateLastUsed() {
+        this.lastUsed = Instant.now();
+    }
 }
