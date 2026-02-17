@@ -18,14 +18,15 @@ public class StorageManager {
 //        int firstFreePage = catalog.getFirstFreePage();
 //        catalog.removeFirstFreePage();
 //        table.setRootPageID(firstFreePage);
+//        BufferManager bufferManager = BufferManager.getInstance();
 //        //buffer manager creates the new page
-//        bufferManager.newPage(firstFreePage);
+//        bufferManager.newPage(firstFreePage, table.getTableName());
 //        catalog.addTable(table);
 //    }
 //
 //    public void DropTable(TableSchema table) {
 //        Catalog catalog = Catalog.getInstance();
-//        BufferManager bufferManager = BufferManger.getInstance();
+//        BufferManager bufferManager = BufferManager.getInstance();
 //        bufferManager.dropTable(table);
 //        catalog.dropTable(table.getTableName());
 //        // add this page to free page list

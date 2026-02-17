@@ -1,9 +1,7 @@
 package Common;
 
 import java.time.Instant;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Page {
     private int numRows;
@@ -11,17 +9,22 @@ public class Page {
     private int nextPage;
     private int freeSpaceStart;
     private int freeSpaceEnd;
-    private Map<Integer, Integer> records;
+    //actual data in each record in arraylist of arraylists
+    private ArrayList<ArrayList<Object>> records;
     private Instant lastUsed;
+    private boolean modified;
+    private String tableName;
 
-    public Page(int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd) {
+    public Page(int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd, boolean modified, String tableName) {
         this.numRows = numRows;
         this.address = address;
         // nextPage of -1 means no next page
         this.nextPage = nextPage;
         this.freeSpaceStart = freeSpaceStart;
         this.freeSpaceEnd = freeSpaceEnd;
-        records = new HashMap<Integer, Integer>();
+        records = new ArrayList<ArrayList<Object>>();
+        this.modified = modified;
+        this.tableName = tableName;
         lastUsed = Instant.now();
     }
 
@@ -41,8 +44,16 @@ public class Page {
         return freeSpaceEnd;
     }
 
-    public void addRecord(int recordAddress, int length){
-        this.records.put(recordAddress, length);
+    public int getPageAddress(){ return address;}
+    public void SetModified(boolean modified){ this.modified = modified;}
+    public boolean getModified(){ return this.modified;}
+    public String getTableName(){ return this.tableName;}
+    public void setTableName(String tableName) {this.tableName = tableName;}
+
+    public ArrayList<Object> getRecord(int index){ return this.records.get(index);}
+
+    public void addRecord(ArrayList<Object> recordData){
+        this.records.add(recordData);
     }
 
 }
