@@ -57,6 +57,8 @@ public class Page {
 
     public void addRecord(ArrayList<Object> recordData){
         this.records.add(recordData);
+        this.modified = true;
+        //update freespacestart and freespaceend
     }
 
     public void updateLastUsed() {

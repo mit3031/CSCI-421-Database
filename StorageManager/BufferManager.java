@@ -42,30 +42,34 @@ public class BufferManager {
         this.dbLocation = dbLocation;
     }
 
-    public void newPage(int Address, String tableName) {
+    public void newPage(int Address, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
         Page newPage = new Page(catalog.getNumTables()+1, Address, -1, Address+(Integer.BYTES*3),Address+ catalog.getPageSize(), true, tableName);
-        //add check for buffersize if buffersize exceeded get rid of last page used.
-        //should be able to use addPageToBuffer(page) here
-        this.bufferPages.put(Address,newPage);
+        //adds new page to bufferpages
+        addPageToBuffer(newPage);
     }
 
     public void dropTable(String tableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
         int pageAddress = catalog.getAddressOfPage(tableName);
-        //add get rid of info in page
         //set all fields to blank and set modified to true
         Page page = this.bufferPages.get(pageAddress);
         if (page == null) {
-            //add check for buffersize if buffersize exceeded get rid of last page used.
+            if (this.bufferPages.size()+1 > this.bufferSize) {
+                removeLRUPage();
+            }
             page = readPage(pageAddress, tableName);
         }
         //while there is a next page set it's tableName to null signifying empty
         while (page.getNextPage() != -1) {
             page.setTableName(null);
+            page.SetModified(true);
             pageAddress = page.getNextPage();
             page = this.bufferPages.get(pageAddress);
             if (page == null) {
+                if (this.bufferPages.size()+1 > this.bufferSize) {
+                    removeLRUPage();
+                }
                 page = readPage(pageAddress, tableName);
             }
         }
@@ -112,9 +116,14 @@ public class BufferManager {
     /**
      * Removes the least recently used page from the buffer
      */
-    private void removeLRUPage(){
+    private void removeLRUPage() throws IOException {
         Integer lruPage = getLeastRecentlyUsedPage();
+        Page page = bufferPages.get(lruPage);
         this.bufferPages.remove(lruPage);
+        //writes page after removal if modified
+        if (page.getModified()) {
+            writePage(page);
+        }
     }
 
     /**
@@ -122,12 +131,9 @@ public class BufferManager {
      * from the buffer and the new page is added
      * @param page the page to add to the buffer
      */
-    private void addPageToBuffer(Page page) {
+    private void addPageToBuffer(Page page) throws IOException {
         //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
-        int pageSize = Catalog.getInstance().getPageSize();
-        int currBufferSize = this.bufferPages.size() * pageSize;
-        if (currBufferSize + pageSize > this.bufferSize)
-        {
+        if (this.bufferPages.size()+1 > this.bufferSize) {
             removeLRUPage();
         }
         this.bufferPages.put(page.getPageAddress(), page);
@@ -164,16 +170,17 @@ public class BufferManager {
                 int nullBitArray = 0b0000;
                 long fixedEnd = 0;
                 for (int j = 0; j<record.size(); j++) {
-                    if (attributes.get(j).getDefinition().getType() == VARCHAR){
-                        length += record.get(j).toString().length()+(Integer.BYTES*2);
-                        fixedEnd += (Integer.BYTES*2);
-                    } else {
-                        length += attributes.get(j).getDefinition().getByteSize();
-                        fixedEnd += attributes.get(j).getDefinition().getByteSize();
-                    }
                     if (record.get(j) == null) {
                         nullBitArray+= Math.pow(2,j);
                         //null bit array at j gets 1
+                    } else {
+                        if (attributes.get(j).getDefinition().getType() == VARCHAR) {
+                            length += record.get(j).toString().length() + (Integer.BYTES * 2);
+                            fixedEnd += (Integer.BYTES * 2);
+                        } else {
+                            length += attributes.get(j).getDefinition().getByteSize();
+                            fixedEnd += attributes.get(j).getDefinition().getByteSize();
+                        }
                     }
                 }
                 //make null bit array
@@ -187,22 +194,25 @@ public class BufferManager {
                 fixedEnd += currentPage.getFilePointer();
                 //loop through and add record data to byte buffer
                 for (int j = 0; j<record.size(); j++) {
-                    //handle writing null values
-                    switch (attributes.get(j).getDefinition().getType()) {
-                        case INTEGER:
-                            currentPage.write(ByteBuffer.allocate(Integer.BYTES).putInt((int)record.get(j)).array());
-                        case DOUBLE:
-                            currentPage.write(ByteBuffer.allocate(Double.BYTES).putDouble((double)record.get(j)).array());
-                        case BOOLEAN:
-                            currentPage.write((byte)((boolean)record.get(j) ? 1 : 0 ));
-                        case CHAR:
-                            currentPage.write(((String)record.get(j)).getBytes());
-                        case VARCHAR:
-                            long currentLoc = currentPage.getFilePointer();
-                            currentPage.seek(fixedEnd);
-                            currentPage.write(((String)record.get(j)).getBytes());
-                            fixedEnd = currentPage.getFilePointer();
-                            currentPage.seek(currentLoc);
+                    //if not null then write value
+                    int bit = (int)Math.pow(2,j);
+                    if ((nullBitArray & bit) == 0) {
+                        switch (attributes.get(j).getDefinition().getType()) {
+                            case INTEGER:
+                                currentPage.write(ByteBuffer.allocate(Integer.BYTES).putInt((int) record.get(j)).array());
+                            case DOUBLE:
+                                currentPage.write(ByteBuffer.allocate(Double.BYTES).putDouble((double) record.get(j)).array());
+                            case BOOLEAN:
+                                currentPage.write((byte) ((boolean) record.get(j) ? 1 : 0));
+                            case CHAR:
+                                currentPage.write(((String) record.get(j)).getBytes());
+                            case VARCHAR:
+                                long currentLoc = currentPage.getFilePointer();
+                                currentPage.seek(fixedEnd);
+                                currentPage.write(((String) record.get(j)).getBytes());
+                                fixedEnd = currentPage.getFilePointer();
+                                currentPage.seek(currentLoc);
+                        }
                     }
                 }
                 currentPage.seek(start);
@@ -235,32 +245,34 @@ public class BufferManager {
                 long start = currentPage.getFilePointer();
                 ArrayList<Object> record = new ArrayList<Object>();
                 currentPage.seek(recordStart);
-                //end = end - length;
                 int nullBitArray = currentPage.readInt();
                 //loop through and read and save record data.
                 for (int j = 0; j<table.getAttributes().size(); j++) {
-                    //handle reading null values
-                    switch (attributes.get(j).getDefinition().getType()) {
-                        case INTEGER:
-                            record.add(currentPage.readInt());
-                        case DOUBLE:
-                            record.add(currentPage.readDouble());
-                        case BOOLEAN:
-                            record.add(currentPage.read() == 1 ? true : false);
-                        case CHAR:
-                            byte [] b = new byte [attributes.get(j).getDefinition().getByteSize()];
-                            currentPage.readFully(b);
-                            record.add(new String(b, StandardCharsets.UTF_8));
-                            currentPage.write(((String)record.get(j)).getBytes());
-                        case VARCHAR:
-                            int beginning = currentPage.readInt();
-                            int length = currentPage.readInt();
-                            long currentLoc = currentPage.getFilePointer();
-                            currentPage.seek(beginning);
-                            byte [] varchar = new byte [length];
-                            currentPage.readFully(varchar);
-                            record.add(new String(varchar, StandardCharsets.UTF_8));
-                            currentPage.seek(currentLoc);
+                    int bit = (int)Math.pow(2,j);
+                    // if not null read it in
+                    if ((nullBitArray & bit) == 0) {
+                        switch (attributes.get(j).getDefinition().getType()) {
+                            case INTEGER:
+                                record.add(currentPage.readInt());
+                            case DOUBLE:
+                                record.add(currentPage.readDouble());
+                            case BOOLEAN:
+                                record.add(currentPage.read() == 1 ? true : false);
+                            case CHAR:
+                                byte[] b = new byte[attributes.get(j).getDefinition().getByteSize()];
+                                currentPage.readFully(b);
+                                record.add(new String(b, StandardCharsets.UTF_8));
+                                currentPage.write(((String) record.get(j)).getBytes());
+                            case VARCHAR:
+                                int beginning = currentPage.readInt();
+                                int length = currentPage.readInt();
+                                long currentLoc = currentPage.getFilePointer();
+                                currentPage.seek(beginning);
+                                byte[] varchar = new byte[length];
+                                currentPage.readFully(varchar);
+                                record.add(new String(varchar, StandardCharsets.UTF_8));
+                                currentPage.seek(currentLoc);
+                        }
                     }
                 }
                 page.addRecord(record);
