@@ -48,9 +48,7 @@ public class BufferManager {
         Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4), Address+ catalog.getPageSize(), true, tableName);
         //adds new page to bufferpages
         addPageToBuffer(newPage);
-        // Write the new page to disk immediately
-        writePage(newPage);
-        newPage.SetModified(false);
+        newPage.SetModified(true);
     }
 
     public void dropTable(String tableName) throws Exception {
@@ -157,6 +155,7 @@ public class BufferManager {
         }
 
         // Also flush all buffered pages
+        //get rid of when shutdown created
         flushAllPages();
     }
 
