@@ -38,7 +38,7 @@ public class Catalog {
     // NOTE: firstFreePage stored here for simplicity
     // May move to StorageManager metadata in later phases.
     private int pageSize;        // Required for DB restart
-    private int firstFreePage;   // Location of first empty page (-1 if none)
+    private LinkedList<Integer> firstFreePage;   // list of empty pages
 
     private Catalog(String dbPath, int pageSize) {
         this.tables = new HashMap<>();
@@ -48,7 +48,7 @@ public class Catalog {
         new File(dbPath).mkdirs();
 
         this.pageSize = pageSize;      // Default if no file exists
-        this.firstFreePage = -1;       // Default empty list
+        this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
         loadFromDisk();
     }
 
@@ -59,12 +59,25 @@ public class Catalog {
         return this.pageSize;
     }
 
-    public int getFirstFreePage() {
-        return this.firstFreePage;
+    public int getNumTables() {
+        return this.tables.size();
     }
 
-    public void setFirstFreePage(int pageId) {
-        this.firstFreePage = pageId;
+    public int getFirstFreePage() {
+        return this.firstFreePage.getFirst();
+    }
+
+    public boolean hasFreePages() {
+        return !this.firstFreePage.isEmpty();
+    }
+
+    public void addFirstFreePage(int pageAddress) {
+        this.firstFreePage.addFirst(pageAddress);
+        saveToDisk();
+    }
+
+    public void removeFirstFreePage() {
+        this.firstFreePage.removeFirst();
         saveToDisk();
     }
 
@@ -118,7 +131,7 @@ public class Catalog {
             throw new Exception("Table does not exist yet");
         }
 
-        return table.getRootPageID() * pageSize;
+        return table.getRootPageID();
     }
 
     public boolean tableExists(String tableName) {
@@ -139,7 +152,11 @@ public class Catalog {
 
             // Write global database info first
             out.writeInt(this.pageSize);
-            out.writeInt(this.firstFreePage);
+            //Write number of freePages for reading it in
+            out.writeInt(this.firstFreePage.size());
+            for (int i = 0; i<this.firstFreePage.size(); i++) {
+                out.writeInt(this.firstFreePage.get(i));
+            }
 
             // Writes how many tables exist in the catalog
             out.writeInt(tables.size());
@@ -213,6 +230,7 @@ public class Catalog {
         File file = new File(catalogPath);
         if (!file.exists()) {
             // No catalog yet so fresh database
+            saveToDisk(); // since this is a new database we're good to store its metadata
             return;
         }
 
@@ -225,7 +243,10 @@ public class Catalog {
 
             // Read global database info first
             this.pageSize = in.readInt();
-            this.firstFreePage = in.readInt();
+            int numFree = in.readInt();
+            for (int i = 0; i < numFree; i++) {
+                this.firstFreePage.addFirst(in.readInt());
+            }
 
             // Read how many tables are stored
             int numTables = in.readInt();
