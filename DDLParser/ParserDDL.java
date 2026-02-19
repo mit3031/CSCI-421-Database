@@ -21,6 +21,9 @@ public class ParserDDL {
                 Command drop = new DropTable();
                 Logger.log("Dropping table from following command: " + command);
                 status = drop.run(command.split("\\s+"));
+            } else if(command.startsWith("ALTER")){
+
+                Logger.log("Altering table from following command: " + command);
             }
 
         } catch (SQLSyntaxErrorException e) {
