@@ -105,12 +105,14 @@ public class BufferManager {
             // Convert List<Object> to ArrayList<Object>
             ArrayList<Object> record = new ArrayList<>(row);
             
-            // Calculate the size needed for this record
+            // Calculate the size needed for this record (data + directory overhead)
             int recordSize = calculateRecordSize(table, record);
+            int directoryOverhead = Integer.BYTES * 2; // offset and length in directory
+            int totalRecordSize = recordSize + directoryOverhead;
             int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
             
             // If not enough space, we need a new page
-            if (availableSpace < recordSize) {
+            if (availableSpace < totalRecordSize) {
                 // Write current page before moving to a new one
                 if (currentPage.getModified()) {
                     writePage(currentPage);
@@ -268,8 +270,32 @@ public class BufferManager {
             
             TableSchema table = catalog.getTable(page.getTableName());
             List<Attribute> attributes = table.getAttributes();
+            
+            // Calculate total size of all records to determine where first record starts
+            int totalDataSize = 0;
+            for (int i = 0; i < page.getNumRows(); i++) {
+                ArrayList<Object> rec = page.getRecord(i);
+                int nullBitArray = 0;
+                int recSize = Integer.BYTES; // null bit array
+                
+                for (int j = 0; j < rec.size(); j++) {
+                    if (rec.get(j) == null) {
+                        nullBitArray += (int)Math.pow(2,j);
+                    } else {
+                        if (attributes.get(j).getDefinition().getType() == VARCHAR) {
+                            recSize += rec.get(j).toString().length();
+                        } else {
+                            recSize += attributes.get(j).getDefinition().getByteSize();
+                        }
+                    }
+                }
+                totalDataSize += recSize;
+            }
+            
+            // Records start from the end of the page and grow backward
+            int currentEnd = page.getPageAddress() + catalog.getPageSize() - totalDataSize;
+            
             //loop for every record
-            int currentEnd = page.getFreeSpaceEnd();
             for (int i = 0; i < page.getNumRows(); i++) {
                 ArrayList<Object> record = page.getRecord(i);
                 int length = 0;
@@ -289,9 +315,6 @@ public class BufferManager {
                 }
                 // Add size of null bit array
                 length += Integer.BYTES;
-                
-                // Calculate where this record will be written (from end backward)
-                currentEnd = currentEnd - length;
                 
                 // Save directory position and write offset and length
                 long directoryPos = currentPage.getFilePointer();
@@ -327,6 +350,9 @@ public class BufferManager {
                         }
                     }
                 }
+                
+                // Move currentEnd forward for next record
+                currentEnd += length;
                 
                 // Return to directory for next entry
                 currentPage.seek(directoryPos + Integer.BYTES * 2);
