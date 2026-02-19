@@ -269,45 +269,51 @@ public class BufferManager {
             TableSchema table = catalog.getTable(page.getTableName());
             List<Attribute> attributes = table.getAttributes();
             //loop for every record
-            int end = page.getFreeSpaceEnd();
+            int currentEnd = page.getFreeSpaceEnd();
             for (int i = 0; i < page.getNumRows(); i++) {
                 ArrayList<Object> record = page.getRecord(i);
                 int length = 0;
-                int nullBitArray = 0b0000;
-                long fixedEnd = 0;
+                int nullBitArray = 0;
+                
+                // Calculate null bit array and record length
                 for (int j = 0; j<record.size(); j++) {
                     if (record.get(j) == null) {
-                        nullBitArray+= Math.pow(2,j);
-                        //null bit array at j gets 1
+                        nullBitArray += (int)Math.pow(2,j);
                     } else {
                         if (attributes.get(j).getDefinition().getType() == VARCHAR) {
-                            length += record.get(j).toString().length() + (Integer.BYTES * 2);
-                            fixedEnd += (Integer.BYTES * 2);
+                            length += record.get(j).toString().length();
                         } else {
                             length += attributes.get(j).getDefinition().getByteSize();
-                            fixedEnd += attributes.get(j).getDefinition().getByteSize();
                         }
                     }
                 }
-                //calculate record size including null bit array
+                // Add size of null bit array
                 length += Integer.BYTES;
-                end = end - length;
-                long start = currentPage.getFilePointer();
-                currentPage.seek(end);
-                //write null bit array
+                
+                // Calculate where this record will be written (from end backward)
+                currentEnd = currentEnd - length;
+                
+                // Save directory position and write offset and length
+                long directoryPos = currentPage.getFilePointer();
+                currentPage.writeInt(currentEnd);
+                currentPage.writeInt(length);
+                
+                // Seek to where record data will be written
+                currentPage.seek(currentEnd);
+                
+                // Write null bit array
                 currentPage.writeInt(nullBitArray);
-                fixedEnd += currentPage.getFilePointer();
-                //loop through and add record data to byte buffer
+                
+                // Write record data
                 for (int j = 0; j<record.size(); j++) {
-                    //if not null then write value
                     int bit = (int)Math.pow(2,j);
                     if ((nullBitArray & bit) == 0) {
                         switch (attributes.get(j).getDefinition().getType()) {
                             case INTEGER:
-                                currentPage.write(ByteBuffer.allocate(Integer.BYTES).putInt((int) record.get(j)).array());
+                                currentPage.writeInt((int) record.get(j));
                                 break;
                             case DOUBLE:
-                                currentPage.write(ByteBuffer.allocate(Double.BYTES).putDouble((double) record.get(j)).array());
+                                currentPage.writeDouble((double) record.get(j));
                                 break;
                             case BOOLEAN:
                                 currentPage.write((byte) ((boolean) record.get(j) ? 1 : 0));
@@ -316,18 +322,14 @@ public class BufferManager {
                                 currentPage.write(((String) record.get(j)).getBytes());
                                 break;
                             case VARCHAR:
-                                long currentLoc = currentPage.getFilePointer();
-                                currentPage.seek(fixedEnd);
                                 currentPage.write(((String) record.get(j)).getBytes());
-                                fixedEnd = currentPage.getFilePointer();
-                                currentPage.seek(currentLoc);
                                 break;
                         }
                     }
                 }
-                currentPage.seek(start);
-                currentPage.writeInt(end);
-                currentPage.writeInt(length);
+                
+                // Return to directory for next entry
+                currentPage.seek(directoryPos + Integer.BYTES * 2);
             }
         }
     }
@@ -387,6 +389,9 @@ public class BufferManager {
                                 currentPage.seek(currentLoc);
                                 break;
                         }
+                    } else {
+                        // Null value - add null to maintain correct indexing
+                        record.add(null);
                     }
                 }
                 page.addRecord(record);
