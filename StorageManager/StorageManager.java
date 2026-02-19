@@ -18,25 +18,30 @@ public class StorageManager {
     private String databaseFilePath = "";
 
 
-//    public void CreateTable(TableSchema table){
-//        Catalog catalog = Catalog.getInstance();
-//        int firstFreePage = catalog.getFirstFreePage();
-//        catalog.removeFirstFreePage();
-//        table.setRootPageID(firstFreePage);
-//        BufferManager bufferManager = BufferManager.getInstance();
-//        //buffer manager creates the new page
-//        bufferManager.newPage(firstFreePage, table.getTableName());
-//        catalog.addTable(table);
-//    }
-//
-//    public void DropTable(TableSchema table) {
-//        Catalog catalog = Catalog.getInstance();
-//        BufferManager bufferManager = BufferManager.getInstance();
-//        bufferManager.dropTable(table);
-//        catalog.dropTable(table.getTableName());
-//        // add this page to free page list
-//        catalog.addFirstFreePage(table.getRootPageId());
-//    }
+    public void CreateTable(TableSchema table) throws IOException {
+        Catalog catalog = Catalog.getInstance();
+        int firstFreePage = catalog.getFirstFreePage();
+        catalog.removeFirstFreePage();
+        table.setRootPageID(firstFreePage);
+        BufferManager bufferManager = BufferManager.getInstance();
+       //buffer manager creates the new page
+        bufferManager.newPage(firstFreePage, table.getTableName());
+        catalog.addTable(table);
+    }
+
+    public void DropTable(TableSchema table) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        BufferManager bufferManager = BufferManager.getInstance();
+        // add this page to free page list
+        catalog.addFirstFreePage(table.getRootPageID());
+        bufferManager.dropTable(table.getTableName());
+        catalog.dropTable(table.getTableName());
+    }
+
+    public void AlterTableDrop(TableSchema table, ArrayList<String> attributes) throws IOException {
+        BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.DropAttributes(table, attributes);
+    }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
         this.dbPath = dbPath;

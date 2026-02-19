@@ -44,7 +44,7 @@ public class BufferManager {
 
     public void newPage(int Address, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        Page newPage = new Page(catalog.getNumTables()+1, Address, -1, Address+(Integer.BYTES*3),Address+ catalog.getPageSize(), true, tableName);
+        Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4),Address+ catalog.getPageSize(), true, tableName);
         //adds new page to bufferpages
         addPageToBuffer(newPage);
     }
@@ -55,9 +55,6 @@ public class BufferManager {
         //set all fields to blank and set modified to true
         Page page = this.bufferPages.get(pageAddress);
         if (page == null) {
-            if (this.bufferPages.size()+1 > this.bufferSize) {
-                removeLRUPage();
-            }
             page = readPage(pageAddress, tableName);
         }
         //while there is a next page set it's tableName to null signifying empty
@@ -67,12 +64,47 @@ public class BufferManager {
             pageAddress = page.getNextPage();
             page = this.bufferPages.get(pageAddress);
             if (page == null) {
-                if (this.bufferPages.size()+1 > this.bufferSize) {
-                    removeLRUPage();
-                }
                 page = readPage(pageAddress, tableName);
             }
         }
+    }
+
+    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
+        Page page = this.bufferPages.get(table.getRootPageID());
+        if (page == null) {
+            page = readPage(table.getRootPageID(), table.getTableName());
+        }
+        Catalog catalog = Catalog.getInstance();
+        for(int i = 0; i < attributes.size(); i++) {
+            List<Attribute> previousAttributes= table.getAttributes();
+            int index = 0;
+            for (int j = 0; j < previousAttributes.size(); j++) {
+                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
+                    index = j;
+                }
+            }
+            table.dropAttribute(attributes.get(i));
+            page.removeAttributeFromRecords(index);
+        }
+        page.SetModified(true);
+        page.updateLastUsed();
+    }
+
+    public void AddAttributes(){
+        //recompute length
+        //change freespaceend
+        //if freespaceend <= freespacestart split page
+    }
+
+    //use this for writing all pages on shutdown
+    public void writePages() throws IOException {
+        for (Integer address : this.bufferPages.keySet()) {
+            Page page = this.bufferPages.get(address);
+            if (page.getModified()) {
+                writePage(page);
+            }
+        }
+        bufferPages.clear();
     }
 
     /**
@@ -186,6 +218,7 @@ public class BufferManager {
                 //make null bit array
                 recordBuffer.putInt(nullBitArray);
                 recordBuffer.rewind();
+                length += Integer.BYTES;
                 end = end - length;
                 long start = currentPage.getFilePointer();
                 currentPage.seek(end);
