@@ -45,7 +45,7 @@ public class BufferManager {
 
     public void newPage(int Address, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        Page newPage = new Page(catalog.getNumTables()+1, Address, -1, Address+(Integer.BYTES*3),Address+ catalog.getPageSize(), true, tableName);
+        Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4), Address+ catalog.getPageSize(), true, tableName);
         //adds new page to bufferpages
         addPageToBuffer(newPage);
         // Write the new page to disk immediately
@@ -59,6 +59,9 @@ public class BufferManager {
         //set all fields to blank and set modified to true
         Page page = this.bufferPages.get(pageAddress);
         if (page == null) {
+            if (this.bufferPages.size()+1 > this.bufferSize) {
+                removeLRUPage();
+            }
             page = readPage(pageAddress, tableName);
         }
         //while there is a next page set it's tableName to null signifying empty
@@ -68,47 +71,12 @@ public class BufferManager {
             pageAddress = page.getNextPage();
             page = this.bufferPages.get(pageAddress);
             if (page == null) {
+                if (this.bufferPages.size()+1 > this.bufferSize) {
+                    removeLRUPage();
+                }
                 page = readPage(pageAddress, tableName);
             }
         }
-    }
-
-    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
-        Page page = this.bufferPages.get(table.getRootPageID());
-        if (page == null) {
-            page = readPage(table.getRootPageID(), table.getTableName());
-        }
-        Catalog catalog = Catalog.getInstance();
-        for(int i = 0; i < attributes.size(); i++) {
-            List<Attribute> previousAttributes= table.getAttributes();
-            int index = 0;
-            for (int j = 0; j < previousAttributes.size(); j++) {
-                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
-                    index = j;
-                }
-            }
-            table.dropAttribute(attributes.get(i));
-            page.removeAttributeFromRecords(index);
-        }
-        page.SetModified(true);
-        page.updateLastUsed();
-    }
-
-    public void AddAttributes(){
-        //recompute length
-        //change freespaceend
-        //if freespaceend <= freespacestart split page
-    }
-
-    //use this for writing all pages on shutdown
-    public void writePages() throws IOException {
-        for (Integer address : this.bufferPages.keySet()) {
-            Page page = this.bufferPages.get(address);
-            if (page.getModified()) {
-                writePage(page);
-            }
-        }
-        bufferPages.clear();
     }
 
     /**
@@ -125,24 +93,24 @@ public class BufferManager {
     public void insert(String tableName, List<List<Object>> rows) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(tableName);
-        
+
         if (table == null) {
             throw new Exception("Table does not exist: " + tableName);
         }
-        
+
         int pageAddress = catalog.getAddressOfPage(tableName);
         Page currentPage = select(pageAddress, tableName);
-        
+
         for (List<Object> row : rows) {
             // Convert List<Object> to ArrayList<Object>
             ArrayList<Object> record = new ArrayList<>(row);
-            
+
             // Calculate the size needed for this record (data + directory overhead)
             int recordSize = calculateRecordSize(table, record);
             int directoryOverhead = Integer.BYTES * 2; // offset and length in directory
             int totalRecordSize = recordSize + directoryOverhead;
             int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
-            
+
             // If not enough space, we need a new page
             if (availableSpace < totalRecordSize) {
                 // Write current page before moving to a new one
@@ -150,7 +118,7 @@ public class BufferManager {
                     writePage(currentPage);
                     currentPage.SetModified(false);
                 }
-                
+
                 // Get a new page
                 int newPageAddress;
                 if (catalog.hasFreePages()) {
@@ -160,34 +128,34 @@ public class BufferManager {
                     // Allocate a new page at the end
                     newPageAddress = currentPage.getPageAddress() + catalog.getPageSize();
                 }
-                
+
                 // Mark current page as having a next page
                 currentPage.setNextPage(newPageAddress);
                 currentPage.SetModified(true);
                 writePage(currentPage);
                 currentPage.SetModified(false);
-                
+
                 // Create the new page
                 newPage(newPageAddress, tableName);
                 currentPage = select(newPageAddress, tableName);
             }
-            
+
             // Add record to current page
             currentPage.addRecord(record);
             currentPage.setNumRows(currentPage.getNumRows() + 1);
-            
+
             // Update free space pointers
             currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
             currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
             currentPage.SetModified(true);
         }
-        
+
         // Write the final page
         if (currentPage.getModified()) {
             writePage(currentPage);
             currentPage.SetModified(false);
         }
-        
+
         // Also flush all buffered pages
         flushAllPages();
     }
@@ -198,7 +166,7 @@ public class BufferManager {
     private int calculateRecordSize(TableSchema table, ArrayList<Object> record) {
         int size = Integer.BYTES; // for null bit array
         List<Attribute> attributes = table.getAttributes();
-        
+
         for (int i = 0; i < record.size(); i++) {
             if (record.get(i) != null) {
                 AttributeDefinition def = attributes.get(i).getDefinition();
@@ -210,7 +178,7 @@ public class BufferManager {
                 }
             }
         }
-        
+
         return size;
     }
 
@@ -293,25 +261,25 @@ public class BufferManager {
                 }
                 return; // Exit early after writing empty page
             }
-            
+
             // Write page header (4 integers = 16 bytes)
             currentPage.writeInt(page.getNumRows());
             currentPage.writeInt(page.getFreeSpaceStart());
             currentPage.writeInt(page.getFreeSpaceEnd());
             currentPage.writeInt(page.getNextPage());
-            
+
             TableSchema table = catalog.getTable(page.getTableName());
             List<Attribute> attributes = table.getAttributes();
-            
+
             // Calculate total size: fixed-size record data + VARCHAR heap data
             int totalFixedSize = 0;  // Fixed-size record data (null bits + fixed fields + VARCHAR pointers)
             int totalVarcharSize = 0; // Variable-length data stored at page end
-            
+
             for (int i = 0; i < page.getNumRows(); i++) {
                 ArrayList<Object> rec = page.getRecord(i);
                 int nullBitArray = 0;
                 int recSize = Integer.BYTES; // null bit array
-                
+
                 for (int j = 0; j < rec.size(); j++) {
                     if (rec.get(j) == null) {
                         nullBitArray += (int)Math.pow(2,j);
@@ -328,20 +296,20 @@ public class BufferManager {
                 }
                 totalFixedSize += recSize;
             }
-            
+
             int totalDataSize = totalFixedSize + totalVarcharSize;
-            
+
             // Records start from the end of the page and grow backward
             int currentRecordPos = page.getPageAddress() + catalog.getPageSize() - totalDataSize;
             // VARCHAR data starts at the very end and grows backward (toward records)
             int currentVarcharPos = page.getPageAddress() + catalog.getPageSize();
-            
+
             //loop for every record
             for (int i = 0; i < page.getNumRows(); i++) {
                 ArrayList<Object> record = page.getRecord(i);
                 int recordLength = 0;
                 int nullBitArray = 0;
-                
+
                 // Calculate null bit array and fixed record length
                 for (int j = 0; j<record.size(); j++) {
                     if (record.get(j) == null) {
@@ -355,16 +323,21 @@ public class BufferManager {
                         }
                     }
                 }
-                //make null bit array
-                recordBuffer.putInt(nullBitArray);
-                recordBuffer.rewind();
-                end = end - length;
-                long start = currentPage.getFilePointer();
-                currentPage.seek(end);
-                //write null bit array
-                currentPage.write(recordBuffer.get());
-                fixedEnd += currentPage.getFilePointer();
-                //loop through and add record data to byte buffer
+                // Add size of null bit array
+                recordLength += Integer.BYTES;
+
+                // Save directory position and write offset and length
+                long directoryPos = currentPage.getFilePointer();
+                currentPage.writeInt(currentRecordPos);
+                currentPage.writeInt(recordLength);
+
+                // Seek to where record data will be written
+                currentPage.seek(currentRecordPos);
+
+                // Write null bit array
+                currentPage.writeInt(nullBitArray);
+
+                // Write record data
                 for (int j = 0; j<record.size(); j++) {
                     int bit = (int)Math.pow(2,j);
                     if ((nullBitArray & bit) == 0) {
@@ -385,11 +358,11 @@ public class BufferManager {
                                 // Store VARCHAR at the end of the page
                                 byte[] varcharBytes = ((String) record.get(j)).getBytes(StandardCharsets.UTF_8);
                                 currentVarcharPos -= varcharBytes.length;
-                                
+
                                 // Write pointer and length in the record
                                 currentPage.writeInt(currentVarcharPos); // pointer to data
                                 currentPage.writeInt(varcharBytes.length); // length of data
-                                
+
                                 // Save current position, write VARCHAR data, then return
                                 long savedPos = currentPage.getFilePointer();
                                 currentPage.seek(currentVarcharPos);
@@ -399,10 +372,10 @@ public class BufferManager {
                         }
                     }
                 }
-                
+
                 // Move currentRecordPos forward for next record
                 currentRecordPos += recordLength;
-                
+
                 // Return to directory for next entry
                 currentPage.seek(directoryPos + Integer.BYTES * 2);
             }
@@ -457,16 +430,16 @@ public class BufferManager {
                                 // Read pointer and length from record
                                 int varcharPointer = currentPage.readInt();
                                 int varcharLength = currentPage.readInt();
-                                
+
                                 // Save current position
                                 long currentPos = currentPage.getFilePointer();
-                                
+
                                 // Seek to VARCHAR data at end of page
                                 currentPage.seek(varcharPointer);
                                 byte[] varchar = new byte[varcharLength];
                                 currentPage.readFully(varchar);
                                 record.add(new String(varchar, StandardCharsets.UTF_8));
-                                
+
                                 // Return to record position
                                 currentPage.seek(currentPos);
                                 break;
