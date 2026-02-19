@@ -74,7 +74,6 @@ public class BufferManager {
         if (page == null) {
             page = readPage(table.getRootPageID(), table.getTableName());
         }
-        Catalog catalog = Catalog.getInstance();
         for(int i = 0; i < attributes.size(); i++) {
             List<Attribute> previousAttributes= table.getAttributes();
             int index = 0;
@@ -90,10 +89,8 @@ public class BufferManager {
         page.updateLastUsed();
     }
 
-    public void AddAttributes(){
-        //recompute length
-        //change freespaceend
-        //if freespaceend <= freespacestart split page
+    public void AddAttributes(TableSchema table, ArrayList<String> attributes){
+        //copy all info from page
     }
 
     //use this for writing all pages on shutdown
