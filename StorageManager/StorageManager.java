@@ -1,13 +1,16 @@
 package StorageManager;
 
+import AttributeInfo.Attribute;
+import AttributeInfo.IntegerDefinition;
 import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import Common.Logger;
 
@@ -18,29 +21,31 @@ public class StorageManager {
     private String databaseFilePath = "";
 
 
-    public void CreateTable(TableSchema table) throws IOException {
+    public void CreateTable(TableSchema table) throws Exception {
         Catalog catalog = Catalog.getInstance();
-        int firstFreePage = catalog.getFirstFreePage();
-        catalog.removeFirstFreePage();
+        int firstFreePage;
+        if (catalog.hasFreePages()) {
+            firstFreePage = catalog.getFirstFreePage();
+            catalog.removeFirstFreePage();
+        } else {
+            // Start at page 0 for first table, or use page size increments
+            firstFreePage = catalog.getNumTables() * catalog.getPageSize();
+        }
         table.setRootPageID(firstFreePage);
-        BufferManager bufferManager = BufferManager.getInstance();
-       //buffer manager creates the new page
-        bufferManager.newPage(firstFreePage, table.getTableName());
+        // Add table to catalog BEFORE creating the page so writePage can find it
         catalog.addTable(table);
+        BufferManager bufferManager = BufferManager.getInstance();
+        //buffer manager creates the new page
+        bufferManager.newPage(firstFreePage, table.getTableName());
     }
 
     public void DropTable(TableSchema table) throws Exception {
         Catalog catalog = Catalog.getInstance();
         BufferManager bufferManager = BufferManager.getInstance();
-        // add this page to free page list
-        catalog.addFirstFreePage(table.getRootPageID());
         bufferManager.dropTable(table.getTableName());
         catalog.dropTable(table.getTableName());
-    }
-
-    public void AlterTableDrop(TableSchema table, ArrayList<String> attributes) throws IOException {
-        BufferManager bufferManager = BufferManager.getInstance();
-        bufferManager.DropAttributes(table, attributes);
+        // add this page to free page list
+        catalog.addFirstFreePage(table.getRootPageID());
     }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
@@ -81,6 +86,9 @@ public class StorageManager {
 
         // From here, init the catalog.
         Catalog.init(dbPath, pageSize);
+
+        // Initialize BufferManager
+        BufferManager.init(bufferSize, dbPath + File.separator + "database.bin");
     }
 
     // Updated to accept parameters needed for the constructor
@@ -126,16 +134,266 @@ public class StorageManager {
         return bufferManager.select(address, tableName);
     }
 
-    public void insert(String tableName, List<List<Objects>> rows){
+    public void insert(String tableName, List<List<Object>> rows) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.insert(tableName, rows);
     }
 
     public static void main(String[] args){
         String[] debugActive = new String[]{"--debug"};
         Logger.initDebug(debugActive);
+        
+        int passedTests = 0;
+        int totalTests = 0;
+        
         try {
             StorageManager.initDatabase(args[0], 400, 0);
+            StorageManager store = StorageManager.getStorageManager();
+            Catalog cat = Catalog.getInstance();
+
+            System.out.println("\n========================================");
+            System.out.println("COMPREHENSIVE INSERT/SELECT TEST SUITE");
+            System.out.println("========================================\n");
+
+            // ============================================================
+            // TEST 1: Single column integer table with few rows
+            // ============================================================
+            totalTests++;
+            System.out.println("TEST 1: Simple Integer Table");
+            System.out.println("--------------------");
+            try {
+                List<Attribute> attrs1 = new ArrayList<>();
+                attrs1.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
+                
+                TableSchema table1 = new TableSchema("SimpleTable", attrs1);
+                store.CreateTable(table1);
+                
+                List<List<Object>> rows1 = new ArrayList<>();
+                rows1.add(Arrays.asList(100));
+                rows1.add(Arrays.asList(200));
+                rows1.add(Arrays.asList(300));
+                
+                store.insert("SimpleTable", rows1);
+                
+                Page page1 = store.selectFirstPage("SimpleTable");
+                if (page1.getNumRows() == 3 && 
+                    page1.getRecord(0).get(0).equals(100) &&
+                    page1.getRecord(1).get(0).equals(200) &&
+                    page1.getRecord(2).get(0).equals(300)) {
+                    System.out.println("✓ PASSED: Retrieved 3 rows with correct values");
+                    passedTests++;
+                } else {
+                    System.out.println("✗ FAILED: Data mismatch");
+                }
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
+            // TEST 2: Multi-column table with different data types
+            // ============================================================
+            totalTests++;
+            System.out.println("\nTEST 2: Multi-Column Mixed Types");
+            System.out.println("--------------------");
+            try {
+                List<Attribute> attrs2 = new ArrayList<>();
+                attrs2.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
+                attrs2.add(new Attribute("score", new AttributeInfo.DoubleDefinition(false, false), null));
+                attrs2.add(new Attribute("active", new AttributeInfo.BooleanDefinition(false, false), null));
+                
+                TableSchema table2 = new TableSchema("MixedTable", attrs2);
+                store.CreateTable(table2);
+                
+                List<List<Object>> rows2 = new ArrayList<>();
+                rows2.add(Arrays.asList(1, 95.5, true));
+                rows2.add(Arrays.asList(2, 87.3, false));
+                rows2.add(Arrays.asList(3, 92.0, true));
+                
+                store.insert("MixedTable", rows2);
+                
+                Page page2 = store.selectFirstPage("MixedTable");
+                if (page2.getNumRows() == 3 &&
+                    page2.getRecord(0).get(0).equals(1) &&
+                    page2.getRecord(0).get(1).equals(95.5) &&
+                    page2.getRecord(0).get(2).equals(true) &&
+                    page2.getRecord(1).get(0).equals(2) &&
+                    page2.getRecord(2).get(2).equals(true)) {
+                    System.out.println("✓ PASSED: Mixed data types stored and retrieved correctly");
+                    passedTests++;
+                } else {
+                    System.out.println("✗ FAILED: Data type mismatch");
+                }
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
+            // TEST 3: Medium batch insert (10 rows)
+            // ============================================================
+            totalTests++;
+            System.out.println("\nTEST 3: Medium Batch Insert (10 rows)");
+            System.out.println("--------------------");
+            try {
+                List<Attribute> attrs3 = new ArrayList<>();
+                attrs3.add(new Attribute("num", new IntegerDefinition(null, true, false), null));
+                attrs3.add(new Attribute("doubled", new IntegerDefinition(null, false, false), null));
+                
+                TableSchema table3 = new TableSchema("MediumTable", attrs3);
+                store.CreateTable(table3);
+                
+                List<List<Object>> rows3 = new ArrayList<>();
+                for (int i = 1; i <= 10; i++) {
+                    rows3.add(Arrays.asList(i, i * 2));
+                }
+                
+                store.insert("MediumTable", rows3);
+                
+                Page page3 = store.selectFirstPage("MediumTable");
+                int totalRows = 0;
+                int firstVal = -1;
+                int lastVal = -1;
+                boolean dataCorrect = true;
+                
+                // Count rows across all pages
+                while (page3 != null) {
+                    System.out.println("  Page has " + page3.getNumRows() + " rows");
+                    for (int i = 0; i < page3.getNumRows(); i++) {
+                        totalRows++;
+                        ArrayList<Object> rec = page3.getRecord(i);
+                        System.out.println("    Record " + i + ": size=" + rec.size() + ", values=" + rec);
+                        
+                        if (rec.size() >= 2 && rec.get(0) != null && rec.get(1) != null) {
+                            int num = (int) rec.get(0);
+                            int doubled = (int) rec.get(1);
+                            
+                            if (totalRows == 1) firstVal = num;
+                            lastVal = num;
+                            
+                            if (doubled != num * 2) {
+                                dataCorrect = false;
+                            }
+                        } else {
+                            System.out.println("    WARNING: Record has null or missing values!");
+                            dataCorrect = false;
+                        }
+                    }
+                    if (page3.getNextPage() != -1) {
+                        page3 = store.select(page3.getNextPage(), "MediumTable");
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (totalRows == 10 && firstVal == 1 && lastVal == 10 && dataCorrect) {
+                    System.out.println("✓ PASSED: All 10 rows stored and retrieved correctly");
+                    passedTests++;
+                } else {
+                    System.out.println("✗ FAILED: Expected 10 rows, got " + totalRows + ", dataCorrect=" + dataCorrect);
+                }
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
+            // TEST 4: Multiple insert batches
+            // ============================================================
+            totalTests++;
+            System.out.println("\nTEST 4: Multiple Separate Inserts");
+            System.out.println("--------------------");
+            try {
+                List<Attribute> attrs4 = new ArrayList<>();
+                attrs4.add(new Attribute("value", new IntegerDefinition(null, true, false), null));
+                
+                TableSchema table4 = new TableSchema("BatchTable", attrs4);
+                store.CreateTable(table4);
+                
+                // First batch
+                List<List<Object>> batch1 = new ArrayList<>();
+                batch1.add(Arrays.asList(10));
+                batch1.add(Arrays.asList(20));
+                store.insert("BatchTable", batch1);
+                
+                // Second batch
+                List<List<Object>> batch2 = new ArrayList<>();
+                batch2.add(Arrays.asList(30));
+                batch2.add(Arrays.asList(40));
+                store.insert("BatchTable", batch2);
+                
+                // Third batch
+                List<List<Object>> batch3 = new ArrayList<>();
+                batch3.add(Arrays.asList(50));
+                store.insert("BatchTable", batch3);
+                
+                Page page4 = store.selectFirstPage("BatchTable");
+                int count = 0;
+                List<Integer> values = new ArrayList<>();
+                
+                while (page4 != null) {
+                    for (int i = 0; i < page4.getNumRows(); i++) {
+                        count++;
+                        values.add((Integer) page4.getRecord(i).get(0));
+                    }
+                    if (page4.getNextPage() != -1) {
+                        page4 = store.select(page4.getNextPage(), "BatchTable");
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (count == 5 && values.contains(10) && values.contains(30) && values.contains(50)) {
+                    System.out.println("✓ PASSED: Multiple inserts accumulated correctly (5 rows total)");
+                    passedTests++;
+                } else {
+                    System.out.println("✗ FAILED: Expected 5 rows, got " + count);
+                }
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
+            // TEST 5: Data persistence verification
+            // ============================================================
+            totalTests++;
+            System.out.println("\nTEST 5: Data Persistence (Re-read)");
+            System.out.println("--------------------");
+            try {
+                // Re-read first table to ensure data was persisted
+                Page page5 = store.selectFirstPage("SimpleTable");
+                if (page5.getNumRows() == 3 && 
+                    page5.getRecord(0).get(0).equals(100)) {
+                    System.out.println("✓ PASSED: Data persisted correctly to disk");
+                    passedTests++;
+                } else {
+                    System.out.println("✗ FAILED: Data not persisted");
+                }
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
+            // SUMMARY
+            // ============================================================
+            System.out.println("\n========================================");
+            System.out.println("TEST SUMMARY");
+            System.out.println("========================================");
+            System.out.println("Passed: " + passedTests + "/" + totalTests);
+            System.out.println("Failed: " + (totalTests - passedTests) + "/" + totalTests);
+            
+            if (passedTests == totalTests) {
+                System.out.println("\n✓✓✓ ALL TESTS PASSED! ✓✓✓");
+            } else {
+                System.out.println("\n⚠ SOME TESTS FAILED");
+            }
+            System.out.println("========================================\n");
+
         } catch (Exception e) {
+            System.out.println("\n✗ CRITICAL ERROR: Test suite failed to initialize");
+            e.printStackTrace();
             System.out.println(e.getMessage());
         }
     }
