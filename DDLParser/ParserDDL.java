@@ -8,9 +8,11 @@ import java.sql.SQLSyntaxErrorException;
 /**
  * Class for handling DDL parsing and proper execution
  */
+
 public class ParserDDL {
     public static boolean parseCommand(String command){
         boolean status = false;
+
         try{
             if(command.startsWith("CREATE")){
                 Command create = new CreateTable();
@@ -24,6 +26,19 @@ public class ParserDDL {
             } else if(command.startsWith("ALTER")){
 
                 Logger.log("Altering table from following command: " + command);
+                String[] commandKeywords = command.split("\\s+");
+                if(commandKeywords[3].equals("DROP")){
+                    Logger.log("Alter drop...");
+                    Command alterDrop = new AlterTableDrop();
+                    status = alterDrop.run(commandKeywords);
+
+                } else if (commandKeywords[3].equals("ADD")) {
+                    Logger.log("Alter add...");
+                    Command alterAdd = new AlterTableAdd();
+                    status = alterAdd.run(commandKeywords);
+
+                }
+
             }
 
         } catch (SQLSyntaxErrorException e) {
