@@ -1,13 +1,17 @@
 package DMLParser;
 
 import Common.Command;
+import Catalog.Catalog;
+import Common.Logger;
+import Common.Page;
+import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
 
 public class Select implements Command{
 
     @Override
-    public boolean run(String[] command) throws SQLSyntaxErrorException {
+    public boolean run(String[] command) throws SQLSyntaxErrorException{
         // for right now select command is simple
         // SELECT * FROM <table>;
 
@@ -26,10 +30,32 @@ public class Select implements Command{
         String table = command[3];
 
         // TODO: verify that table exists
+        Catalog cat = Catalog.getInstance();
+        if (!cat.tableExists(table)){
+            throw new SQLSyntaxErrorException(
+                    "Table does not exists"
+            );
+        }
 
 
         // TODO: once implemented run the actual select command
-        System.out.println("Running select * on table " + table);
+        Logger.log("Running select * on table " + table);
+        StorageManager store = StorageManager.getStorageManager();
+        try {
+            Page currentPage = store.selectFirstPage(table);
+            while (true){
+                for (int i = 0; i < currentPage.getNumRows(); i++){
+                    System.out.println(currentPage.getRecord(i).toString());
+                }
+                if (currentPage.getNextPage() == -1){
+                    break;
+                }
+                currentPage = store.select(currentPage.getNextPage(), table);
+            }
+
+        } catch (Exception e) {
+            throw new SQLSyntaxErrorException("Error getting pages");
+        }
 
         return true;
     }

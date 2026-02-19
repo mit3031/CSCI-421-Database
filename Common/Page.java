@@ -113,4 +113,20 @@ public class Page {
     public void updateLastUsed() {
         this.lastUsed = Instant.now();
     }
+
+    public void setNumRows(int numRows) {
+        this.numRows = numRows;
+    }
+
+    public void setNextPage(int nextPage) {
+        this.nextPage = nextPage;
+    }
+
+    public void setFreeSpaceStart(int freeSpaceStart) {
+        this.freeSpaceStart = freeSpaceStart;
+    }
+
+    public void setFreeSpaceEnd(int freeSpaceEnd) {
+        this.freeSpaceEnd = freeSpaceEnd;
+    }
 }

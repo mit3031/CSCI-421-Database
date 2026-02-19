@@ -67,6 +67,10 @@ public class Catalog {
         return this.firstFreePage.getFirst();
     }
 
+    public boolean hasFreePages() {
+        return !this.firstFreePage.isEmpty();
+    }
+
     public void addFirstFreePage(int pageAddress) {
         this.firstFreePage.addFirst(pageAddress);
         saveToDisk();
