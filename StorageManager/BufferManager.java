@@ -456,4 +456,42 @@ public class BufferManager {
             return page;
         }
     }
+
+    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
+        Page page = this.bufferPages.get(table.getRootPageID());
+        if (page == null) {
+            page = readPage(table.getRootPageID(), table.getTableName());
+        }
+        Catalog catalog = Catalog.getInstance();
+        for(int i = 0; i < attributes.size(); i++) {
+            List<Attribute> previousAttributes= table.getAttributes();
+            int index = 0;
+            for (int j = 0; j < previousAttributes.size(); j++) {
+                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
+                    index = j;
+                }
+            }
+            table.dropAttribute(attributes.get(i));
+            page.removeAttributeFromRecords(index);
+        }
+        page.SetModified(true);
+        page.updateLastUsed();
+    }
+
+    public void AddAttributes(){
+        //recompute length
+        //change freespaceend
+        //if freespaceend <= freespacestart split page
+    }
+
+    //use this for writing all pages on shutdown
+    public void writePages() throws IOException {
+        for (Integer address : this.bufferPages.keySet()) {
+            Page page = this.bufferPages.get(address);
+            if (page.getModified()) {
+                writePage(page);
+            }
+        }
+        bufferPages.clear();
+    }
 }
