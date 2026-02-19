@@ -32,7 +32,7 @@ public class BufferManager {
 
     public static BufferManager getInstance() {
         if (bufferManager == null) {
-            throw new IllegalStateException("Catalog not initialized");
+            throw new IllegalStateException("Buffer manager not initialized");
         }
         return bufferManager;
     }
@@ -62,10 +62,10 @@ public class BufferManager {
             }
             page = readPage(pageAddress, tableName);
         }
+        page.setTableName(null);
+        page.SetModified(true);
         //while there is a next page set it's tableName to null signifying empty
         while (page.getNextPage() != -1) {
-            page.setTableName(null);
-            page.SetModified(true);
             pageAddress = page.getNextPage();
             page = this.bufferPages.get(pageAddress);
             if (page == null) {
@@ -74,6 +74,8 @@ public class BufferManager {
                 }
                 page = readPage(pageAddress, tableName);
             }
+            page.setTableName(null);
+            page.SetModified(true);
         }
     }
 
