@@ -142,6 +142,13 @@ public class Catalog {
         return tables.values();
     }
 
+    public void renameTable(String oldTableName, String newTableName) {
+        TableSchema table = getTable(oldTableName);
+        table.renameTable(newTableName);
+        tables.remove(oldTableName);
+        tables.put(newTableName.toLowerCase(), table);
+    }
+
     public void saveToDisk() {
         DataOutputStream out = null;
 
