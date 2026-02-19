@@ -18,12 +18,14 @@ public class CreateTable implements Command {
      * @return True if good execution, false otherwise
      * @throws SQLSyntaxErrorException when command's syntax is bad
      */
+
     @Override
     public boolean run(String[] command) throws SQLSyntaxErrorException {
         int pKeyCount = 0; //for validation of exactly 1 key
 
-        String tableName = command[2]; //table name will always be 3rd "word" in command
+        String tableName = command[2].toLowerCase(); //table name will always be 3rd "word" in command
         ArrayList<Attribute> attributes = new ArrayList<>();
+
 
         int index = 4;
         //keep parsing until out of stuff
