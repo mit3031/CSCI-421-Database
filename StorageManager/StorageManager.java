@@ -1,13 +1,16 @@
 package StorageManager;
 
+import AttributeInfo.Attribute;
+import AttributeInfo.IntegerDefinition;
 import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 import Common.Logger;
 
@@ -18,25 +21,32 @@ public class StorageManager {
     private String databaseFilePath = "";
 
 
-//    public void CreateTable(TableSchema table){
-//        Catalog catalog = Catalog.getInstance();
-//        int firstFreePage = catalog.getFirstFreePage();
-//        catalog.removeFirstFreePage();
-//        table.setRootPageID(firstFreePage);
-//        BufferManager bufferManager = BufferManager.getInstance();
-//        //buffer manager creates the new page
-//        bufferManager.newPage(firstFreePage, table.getTableName());
-//        catalog.addTable(table);
-//    }
-//
-//    public void DropTable(TableSchema table) {
-//        Catalog catalog = Catalog.getInstance();
-//        BufferManager bufferManager = BufferManager.getInstance();
-//        bufferManager.dropTable(table);
-//        catalog.dropTable(table.getTableName());
-//        // add this page to free page list
-//        catalog.addFirstFreePage(table.getRootPageId());
-//    }
+    public void CreateTable(TableSchema table) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        int firstFreePage;
+        if (catalog.hasFreePages()) {
+            firstFreePage = catalog.getFirstFreePage();
+            catalog.removeFirstFreePage();
+        } else {
+            // Start at page 0 for first table, or use page size increments
+            firstFreePage = catalog.getNumTables() * catalog.getPageSize();
+        }
+        table.setRootPageID(firstFreePage);
+        // Add table to catalog BEFORE creating the page so writePage can find it
+        catalog.addTable(table);
+        BufferManager bufferManager = BufferManager.getInstance();
+        //buffer manager creates the new page
+        bufferManager.newPage(firstFreePage, table.getTableName());
+    }
+
+    public void DropTable(TableSchema table) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.dropTable(table.getTableName());
+        catalog.dropTable(table.getTableName());
+        // add this page to free page list
+        catalog.addFirstFreePage(table.getRootPageID());
+    }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
         this.dbPath = dbPath;
@@ -76,6 +86,9 @@ public class StorageManager {
 
         // From here, init the catalog.
         Catalog.init(dbPath, pageSize);
+
+        // Initialize BufferManager
+        BufferManager.init(bufferSize, dbPath + File.separator + "database.bin");
     }
 
     // Updated to accept parameters needed for the constructor
@@ -121,8 +134,9 @@ public class StorageManager {
         return bufferManager.select(address, tableName);
     }
 
-    public void insert(String tableName, List<List<Objects>> rows){
+    public void insert(String tableName, List<List<Object>> rows) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.insert(tableName, rows);
     }
 
     public static void main(String[] args){
@@ -130,7 +144,57 @@ public class StorageManager {
         Logger.initDebug(debugActive);
         try {
             StorageManager.initDatabase(args[0], 400, 0);
+            StorageManager store = StorageManager.getStorageManager();
+            Catalog cat = Catalog.getInstance();
+
+            Logger.log("Loading the attributes");
+            List<Attribute> attributes = new ArrayList<>();
+            attributes.add(
+                    new Attribute("x",
+                            new IntegerDefinition(null, true, false),
+                            "5"
+                    )
+            );
+
+            Logger.log("Creating Table Schema");
+            TableSchema testTable = new TableSchema(
+                    "TestTable",
+                    attributes
+            );
+            store.CreateTable(testTable);
+
+            Logger.log("Inserting elements into table");
+
+            List<List<Object>> rows = new ArrayList<>();
+
+            // Add 1, 2, and 3 as separate rows
+            rows.add(Arrays.asList(1));
+            rows.add(Arrays.asList(2));
+            rows.add(Arrays.asList(3));
+
+            store.insert("TestTable", rows);
+
+            Logger.log("Attempting to extract that data");
+            try {
+                Page currentPage = store.selectFirstPage("TestTable");
+                Logger.log("Found Rows" + currentPage.getNumRows());
+                for (int i = 0; i < currentPage.getNumRows(); i++){
+                    System.out.println(currentPage.getRecord(i).toString());
+                }
+                while (currentPage.getNextPage() != -1){
+                    for (int i = 0; i < currentPage.getNumRows(); i++){
+                        System.out.println(currentPage.getRecord(i).toString());
+                    }
+                    currentPage = store.select(currentPage.getNextPage(), "TestTable");
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new SQLSyntaxErrorException("Error getting pages: " + e.getMessage());
+            }
+
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println(e.getMessage());
         }
     }
