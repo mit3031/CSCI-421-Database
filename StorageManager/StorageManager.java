@@ -2,6 +2,7 @@ package StorageManager;
 
 import AttributeInfo.Attribute;
 import AttributeInfo.IntegerDefinition;
+import Common.Command;
 import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import Common.Logger;
+import DDLParser.AlterTableDrop;
 
 
 public class StorageManager {
@@ -227,6 +229,15 @@ public class StorageManager {
                 } else {
                     System.out.println("✗ FAILED: Data type mismatch");
                 }
+
+//                System.out.println("Test alterTableDrop");
+//                String[] commandKeywords = new String[]{"Alter", "Table", "MixedTable", "DROP", "scOre"};
+//                Command alterDrop = new AlterTableDrop();
+//                boolean status = alterDrop.run(commandKeywords);
+//                System.out.println("Staus: " + status );
+//                Page pageafterdrop = store.selectFirstPage("MixedTable");
+//                List<Attribute> attributes2 = cat.getTable("MixedTable").getAttributes();
+//                System.out.println("After drop cols: " + attributes2.get(0).getName() +", "+ attributes2.get(1).getName() + "\nFirst record " + pageafterdrop.getRecord(0).toString());
             } catch (Exception e) {
                 System.out.println("✗ FAILED: " + e.getMessage());
                 e.printStackTrace();
@@ -393,6 +404,11 @@ public class StorageManager {
                 System.out.println("\n⚠ SOME TESTS FAILED");
             }
             System.out.println("========================================\n");
+
+
+
+
+
 
         } catch (Exception e) {
             System.out.println("\n✗ CRITICAL ERROR: Test suite failed to initialize");

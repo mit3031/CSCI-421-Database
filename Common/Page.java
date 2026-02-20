@@ -144,7 +144,7 @@ public class Page {
         TableSchema table = catalog.getTable(this.tableName);
         List<Attribute> attributes = table.getAttributes();
         for (int i = 0; i < attributes.size(); i++) {
-            if(attributes.get(i).getName().equals(attributeName)){
+            if(attributes.get(i).getName().equalsIgnoreCase(attributeName)){
                 return i;
             }
         }

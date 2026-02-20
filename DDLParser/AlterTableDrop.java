@@ -31,7 +31,7 @@ public class AlterTableDrop implements Command {
         Catalog catalog = Catalog.getInstance();
         String tableName = command[TABLE_NAME_INDEX].toLowerCase();
         StorageManager storageManager = StorageManager.getStorageManager();
-        String attributeNameToDrop = command[ATTRIBUTE_NAME_INDEX];
+        String attributeNameToDrop = command[ATTRIBUTE_NAME_INDEX].toLowerCase();
 
         TableSchema originalTable = catalog.getTable(tableName);
         if (originalTable == null) {
@@ -43,7 +43,7 @@ public class AlterTableDrop implements Command {
         List<Attribute> oldAttributes = originalTable.getAttributes();
         List<Attribute> newAttributes = new ArrayList<>();
         for (Attribute attribute : oldAttributes) {
-            if (!attribute.getName().equals(attributeNameToDrop)) {
+            if (!attribute.getName().equalsIgnoreCase(attributeNameToDrop)) {
                 newAttributes.add(attribute);
             }
         }
