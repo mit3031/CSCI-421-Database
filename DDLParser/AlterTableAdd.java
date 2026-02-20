@@ -74,6 +74,9 @@ public class AlterTableAdd implements Command {
                 i++;
                 if(i<command.length) {
                     defaultValue = command[i];
+                    if(defaultValue.contains(";")){
+                        defaultValue = defaultValue.substring(0, defaultValue.indexOf(";"));
+                    }
                 }
                 else{
                     Logger.log("Default value not found, reached end of command!");
@@ -83,22 +86,36 @@ public class AlterTableAdd implements Command {
                 Logger.log("Default specified but not given value");
             }
         }
+
+        if(notNull && defaultValue == null){
+            System.out.println("Not null requires a default value when altering a table");
+            return false;
+        }
+
+        //casted default value so we don't super fail
+        Object defCast;
+
         //define our attribute
-        AttributeDefinition def = null;
+        AttributeDefinition def;
         if(attType.equals("INTEGER")){
             def = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, !notNull);
+            defCast = (defaultValue!=null) ? Integer.parseInt(defaultValue) : null;
         } else if (attType.equals("DOUBLE")) {
             def = new DoubleDefinition(false, !notNull);
+            defCast = (defaultValue!=null) ? Double.parseDouble(defaultValue) : null;
         } else if (attType.equals("BOOLEAN")) {
             def = new BooleanDefinition(false, !notNull);
+            defCast = (defaultValue!=null) ? Boolean.parseBoolean(defaultValue) : null;
         } else if (attType.startsWith("CHAR")){
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len =  Integer.parseInt(lenStr);
             def = new CharDefinition(false, !notNull, len);
+            defCast = defaultValue;
         } else if (attType.startsWith("VARCHAR")){
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len = Integer.parseInt(lenStr);
             def = new CharDefinition(false, !notNull, len);
+            defCast = defaultValue;
         } else{
             Logger.log("Unrecognized type " + attType + " for Alter Add!");
             return false;
@@ -107,6 +124,10 @@ public class AlterTableAdd implements Command {
         Attribute newAttr = new Attribute(attName, def, defaultValue);
         List<Attribute> defs = tableSchema.getAttributes();
         defs.add(newAttr);
+
+
+
+
         try {
             //make new schema
             TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, defs);
@@ -114,8 +135,10 @@ public class AlterTableAdd implements Command {
             StorageManager sm = StorageManager.getStorageManager();
             sm.CreateTable(newTable);
 
+            //find start of old table
             Page pg = sm.selectFirstPage(tableName);
 
+            //go through all pages
             while (pg != null) {
                 int numRecords = pg.getNumRows();
                 List<List<Object>> newRecords = new ArrayList<>();
@@ -123,12 +146,14 @@ public class AlterTableAdd implements Command {
                     //get the old arrayList
                     ArrayList<Object> rec = new ArrayList<>(List.copyOf(pg.getRecord(i)));
                     //append the new record w/ default value to it
-                    rec.add(defaultValue);
+                    rec.add(defCast);
 
                     newRecords.add(rec);
                 }
                 //insert these records to new table
                 sm.insert(TEMP_TABLE_NAME, newRecords);
+
+                //move on to the next page of records from old table
                 int nextPage = pg.getNextPage();
                 if(nextPage!= -1) {
                     pg = sm.select(nextPage, tableName);
@@ -138,13 +163,13 @@ public class AlterTableAdd implements Command {
                 }
 
             }
+
+
             //now have copied all records through
             //delete old table and rename new one
-
             sm.DropTable(tableSchema);
-
-
             cat.renameTable(TEMP_TABLE_NAME, tableName);
+
         } catch (Exception e) {
             Logger.log(e.getMessage());
             throw new RuntimeException(e);
