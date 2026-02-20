@@ -5,8 +5,42 @@ import AttributeInfo.*;
 import Common.Logger;
 import DMLParser.ParserDML;
 import java.util.*;
+import java.io.File;
+import java.nio.file.*;
 
 public class SelectTest {
+    /**
+     * Recursively deletes a directory and all its contents
+     */
+    private static void cleanupDatabase(String dbPath) {
+        File dbDir = new File(dbPath);
+        if (dbDir.exists()) {
+            try {
+                deleteDirectory(dbDir);
+                System.out.println("Cleaned up existing database: " + dbPath);
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to cleanup database: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Helper method to recursively delete a directory
+     */
+    private static void deleteDirectory(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        dir.delete();
+    }
+    
     public static void main(String[] args) {
         String[] debugActive = new String[]{"--debug"};
         Logger.initDebug(debugActive);
@@ -15,6 +49,9 @@ public class SelectTest {
         int totalTests = 0;
         
         try {
+            // Clean up any existing database
+            cleanupDatabase("selecttestdb");
+            
             StorageManager.initDatabase("selecttestdb", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             
