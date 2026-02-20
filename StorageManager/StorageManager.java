@@ -54,11 +54,11 @@ public class StorageManager {
     public void shutdown() throws IOException {
         BufferManager bufferManager = BufferManager.getInstance();
         bufferManager.flushAllPages();
-        //bufferManager.saveToDisk();
+        bufferManager.saveToDisk();
     }
     public void bootup() {
-        //BufferManager bufferManger = BufferManager.getInstance();
-        //bufferManager.loadFromDisk();
+        BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.loadFromDisk();
     }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {

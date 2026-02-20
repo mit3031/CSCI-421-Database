@@ -2,6 +2,7 @@ import Common.Logger;
 import DDLParser.ParserDDL;
 import StorageManager.StorageManager;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 /**
@@ -17,8 +18,8 @@ public class JottQL {
                                         boolean indexing, boolean debug){
         try {
             StorageManager.initDatabase(dbLocation, pageSize, bufferSize);
-
-
+            StorageManager storageManager = StorageManager.getStorageManager();
+            storageManager.bootup();
         } catch (Exception e) {
             System.out.println("An error occurred, could not start Database!");
             System.exit(1);
@@ -30,8 +31,9 @@ public class JottQL {
     /**
      * Handle shutdown procedure here
      */
-    private static void shutdown(){
-        //TODO
+    private static void shutdown() throws IOException {
+        StorageManager storageManager = StorageManager.getStorageManager();
+        storageManager.shutdown();
     }
 
     /**
