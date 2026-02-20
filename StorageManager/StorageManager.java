@@ -242,7 +242,7 @@ public class StorageManager {
                     System.out.println("✗ FAILED: Data type mismatch");
                 }
 
-
+                /*
                 System.out.println("Test DDLParser:");
                 System.out.println("--------------------");
                 String command = "CREATE TABLE foo ( x INTEGER PRIMARYKEY );";
@@ -252,14 +252,6 @@ public class StorageManager {
                 status = ParserDDL.parseCommand(command);
                 System.out.println("Status: " + status);
                 System.out.println();
-
-
-                TableSchema tab = cat.getTable("mytable3");
-                for(Attribute a : tab.getAttributes()){
-                    System.out.println(a.getName() +" " +  a.getDefinition().getType());
-                }
-
-
 
                 command = "INSERT INTO myTable3 VALUES ( 1, 2.0, \"hi!\");";
                 ParserDML.runCommand(command);
@@ -271,6 +263,14 @@ public class StorageManager {
                 status = ParserDDL.parseCommand(command);
                 System.out.println("Status: " + status );
                 ParserDML.runCommand(selectCommand);
+                System.out.println("Test Alter Drop");
+                command = "DROP TABLE myTable3;";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status );
+                status = cat.tableExists("myTable3");
+                System.out.println("Does table still exist? " + status);
+                */
+
 
 
 
