@@ -158,9 +158,6 @@ public class BufferManager {
             currentPage.SetModified(false);
         }
 
-        // Also flush all buffered pages
-        //get rid of when shutdown created
-        flushAllPages();
     }
 
     /**
