@@ -1,8 +1,10 @@
 package DDLParser;
 
 import AttributeInfo.*;
+import Catalog.TableSchema;
 import Common.Command;
 import Common.Logger;
+import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
 import java.util.ArrayList;
@@ -109,20 +111,22 @@ public class CreateTable implements Command {
         
         
         //TODO check no attributes with same name
-        //also check exactly one thign for primary key
-        //what do for not null? figure that out
+        //what do for not null? figure that out, not for this yet?
 
         if(pKeyCount != 1){
             Logger.log("CREATE Syntax Error: Primary Key Count is: " + pKeyCount + ". Expected 1");
             return false;
         }
+        TableSchema table = new TableSchema(tableName, attributes);
 
         //TODO do the storage manager call and see result, return based on that
-
-
-
-
-
-        return false;
+        StorageManager sm = StorageManager.getStorageManager();
+        try {
+            sm.CreateTable(table);
+        } catch (Exception e) {
+            Logger.log("Create Table Error in S.M. call: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        return true;
     }
 }
