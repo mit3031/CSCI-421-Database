@@ -1,6 +1,6 @@
 package DDLParser;
 
-import AttributeInfo.Attribute;
+import AttributeInfo.*;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import Common.Command;
@@ -51,7 +51,7 @@ public class AlterTableAdd implements Command {
                 return false;
             }
         }
-
+        String defaultValue = null;
         boolean notNull = false;
         //now we can get rest of info about this
         for(int i = 6; i<command.length; i++) {
@@ -61,7 +61,10 @@ public class AlterTableAdd implements Command {
             else if(command[i].equals("DEFAULT")) {
                 i++;
                 if(i<command.length) {
-                    //TODO figure out default value in context of typings
+                    defaultValue = command[i];
+                }
+                else{
+                    Logger.log("Default value not found, reached end of command!");
                 }
             }
             else{
@@ -69,14 +72,21 @@ public class AlterTableAdd implements Command {
             }
         }
 
-
-
-
-
-
-
-
-
+        AttributeDefinition def = null;
+        if(attType.equals("INTEGER")){
+            def = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, !notNull);
+        } else if (attType.equals("DOUBLE")) {
+            def = new DoubleDefinition(false, !notNull);
+        } else if (attType.equals("BOOLEAN")) {
+            def = new BooleanDefinition(false, !notNull);
+        } else if (attType.startsWith("CHAR")){
+            //todo have to fix parenthesis fail
+        } else if (attType.startsWith("VARCHAR")){
+            //todo have to deal with parenthesis fail
+        } else{
+            Logger.log("Unrecognized type " + attType + " for Alter Add!");
+            return false;
+        }
 
 
         return false;
