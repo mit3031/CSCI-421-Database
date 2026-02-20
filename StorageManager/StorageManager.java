@@ -267,7 +267,7 @@ public class StorageManager {
                 ParserDML.runCommand(selectCommand);
 
                 System.out.println("Test Alter Add");
-                command = "ALTER TABLE myTable3 ADD x14 INTEGER;";
+                command = "ALTER TABLE myTable3 ADD x14 INTEGER NOTNULL DEFAULT 15;";
                 status = ParserDDL.parseCommand(command);
                 System.out.println("Status: " + status );
                 ParserDML.runCommand(selectCommand);

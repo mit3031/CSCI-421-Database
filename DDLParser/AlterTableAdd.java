@@ -74,6 +74,9 @@ public class AlterTableAdd implements Command {
                 i++;
                 if(i<command.length) {
                     defaultValue = command[i];
+                    if(defaultValue.contains(";")){
+                        defaultValue = defaultValue.substring(0, defaultValue.indexOf(";"));
+                    }
                 }
                 else{
                     Logger.log("Default value not found, reached end of command!");
@@ -83,6 +86,13 @@ public class AlterTableAdd implements Command {
                 Logger.log("Default specified but not given value");
             }
         }
+
+        if(notNull && defaultValue == null){
+            System.out.println("Not null requires a default value when altering a table");
+            return false;
+        }
+
+
         //define our attribute
         AttributeDefinition def = null;
         if(attType.equals("INTEGER")){
@@ -107,6 +117,10 @@ public class AlterTableAdd implements Command {
         Attribute newAttr = new Attribute(attName, def, defaultValue);
         List<Attribute> defs = tableSchema.getAttributes();
         defs.add(newAttr);
+
+
+
+
         try {
             //make new schema
             TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, defs);
@@ -114,8 +128,10 @@ public class AlterTableAdd implements Command {
             StorageManager sm = StorageManager.getStorageManager();
             sm.CreateTable(newTable);
 
+            //find start of old table
             Page pg = sm.selectFirstPage(tableName);
 
+            //go through all pages
             while (pg != null) {
                 int numRecords = pg.getNumRows();
                 List<List<Object>> newRecords = new ArrayList<>();
@@ -129,6 +145,8 @@ public class AlterTableAdd implements Command {
                 }
                 //insert these records to new table
                 sm.insert(TEMP_TABLE_NAME, newRecords);
+
+                //move on to the next page of records from old table
                 int nextPage = pg.getNextPage();
                 if(nextPage!= -1) {
                     pg = sm.select(nextPage, tableName);
@@ -138,13 +156,13 @@ public class AlterTableAdd implements Command {
                 }
 
             }
+
+
             //now have copied all records through
             //delete old table and rename new one
-
             sm.DropTable(tableSchema);
-
-
             cat.renameTable(TEMP_TABLE_NAME, tableName);
+
         } catch (Exception e) {
             Logger.log(e.getMessage());
             throw new RuntimeException(e);
