@@ -5,8 +5,12 @@ import Catalog.Catalog;
 import Catalog.TableSchema;
 import Common.Command;
 import Common.Logger;
+import Common.Page;
+import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class to handle running an alter table, in which an attribute is added
@@ -17,6 +21,7 @@ public class AlterTableAdd implements Command {
     private static final int TABLE_NAME_INDEX = 2;
     private static final int NEW_ATT_NAME_INDEX = 4;
     private static final int NEW_ATT_TYPE_INDEX = 5;
+    private static final String TEMP_TABLE_NAME = "$temp";
 
     @Override
     public boolean run(String[] command) throws SQLSyntaxErrorException {
@@ -24,7 +29,7 @@ public class AlterTableAdd implements Command {
             Logger.log("Command too short for Alter Table Drop! Min. Len " +  MIN_QUERY_LEN + " Got " + command.length);
         }
 
-        String tableName =  command[TABLE_NAME_INDEX];
+        String tableName =  command[TABLE_NAME_INDEX].toLowerCase();
         Catalog cat = Catalog.getInstance();
         TableSchema tableSchema = cat.getTable(tableName);
         //we do not have table
@@ -71,7 +76,7 @@ public class AlterTableAdd implements Command {
                 Logger.log("Default specified but not given value");
             }
         }
-
+        //define our attribute
         AttributeDefinition def = null;
         if(attType.equals("INTEGER")){
             def = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, !notNull);
@@ -80,13 +85,52 @@ public class AlterTableAdd implements Command {
         } else if (attType.equals("BOOLEAN")) {
             def = new BooleanDefinition(false, !notNull);
         } else if (attType.startsWith("CHAR")){
-            //todo have to fix parenthesis fail
+            String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
+            int len =  Integer.parseInt(lenStr);
+            def = new CharDefinition(false, !notNull, len);
         } else if (attType.startsWith("VARCHAR")){
-            //todo have to deal with parenthesis fail
+            String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
+            int len = Integer.parseInt(lenStr);
+            def = new CharDefinition(false, !notNull, len);
         } else{
             Logger.log("Unrecognized type " + attType + " for Alter Add!");
             return false;
         }
+
+        Attribute newAttr = new Attribute(attName, def, defaultValue);
+        List<Attribute> defs = tableSchema.getAttributes();
+        defs.add(newAttr);
+
+        //make new schema
+        TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, defs);
+
+        StorageManager sm = StorageManager.getStorageManager();
+        sm.CreateTable(newTable);
+
+        Page pg = sm.selectFirstPage(tableName);
+
+        while(pg !=null && pg.getNextPage() != -1 ){
+            int numRecords = pg.getNumRows();
+            List<List<Object>> newRecords = new ArrayList<>();
+            for(int i = 0; i < numRecords; i++) {
+                //get the old arrayList
+                ArrayList<Object> rec = new ArrayList<>(List.copyOf(pg.getRecord(i)));
+                //append the new record w/ default value to it
+                rec.add(defaultValue);
+
+                newRecords.add(rec);
+            }
+            //insert these records to new table
+            sm.insert(TEMP_TABLE_NAME, newRecords);
+
+        }
+        //now have copied all records through
+        //delete old table and rename new one
+
+        sm.DropTable(tableSchema);
+
+        //todo rename temp table
+
 
 
         return false;
