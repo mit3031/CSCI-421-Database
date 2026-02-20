@@ -84,31 +84,35 @@ public class Page {
         this.freeSpaceEnd -= length;
     }
 
-    public void removeAttributeFromRecords(int index){
-        for(int i = 0; i < this.records.size(); i++) {
-            this.records.get(i).remove(index);
-        }
-        Catalog catalog = Catalog.getInstance();
-        TableSchema table = catalog.getTable(this.tableName);
-        List<Attribute> attributes = table.getAttributes();
-        int totalLength = 0;
-        for (int i = 0; i < numRows; i++) {
-            //replace with recordlength function later?
-            int length = 0;
-            for (int j = 0; j < this.records.size(); j++) {
-                if (this.records.get(j) != null) {
-                    if (attributes.get(j).getDefinition().getType() == VARCHAR) {
-                        length += this.records.get(j).toString().length() + (Integer.BYTES * 2);
-                    } else {
-                        length += attributes.get(j).getDefinition().getByteSize();
-                    }
-                }
-            }
-            totalLength += length+Integer.BYTES;
-        }
-        //freespaceend = (pageaddress+pagesize) end of page - length of all records
-        this.freeSpaceEnd = (this.address+catalog.getPageSize()) - totalLength;
-    }
+
+// todo review below comment
+
+//  Same as comment in bufferManager, I don't think we need this since we changed the way we drop attributes but didn't wanna remove it yet
+//    public void removeAttributeFromRecords(int index){
+//        for(int i = 0; i < this.records.size(); i++) {
+//            this.records.get(i).remove(index);
+//        }
+//        Catalog catalog = Catalog.getInstance();
+//        TableSchema table = catalog.getTable(this.tableName);
+//        List<Attribute> attributes = table.getAttributes();
+//        int totalLength = 0;
+//        for (int i = 0; i < numRows; i++) {
+//            //replace with recordlength function later?
+//            int length = 0;
+//            for (int j = 0; j < this.records.size(); j++) {
+//                if (this.records.get(j) != null) {
+//                    if (attributes.get(j).getDefinition().getType() == VARCHAR) {
+//                        length += this.records.get(j).toString().length() + (Integer.BYTES * 2);
+//                    } else {
+//                        length += attributes.get(j).getDefinition().getByteSize();
+//                    }
+//                }
+//            }
+//            totalLength += length+Integer.BYTES;
+//        }
+//        //freespaceend = (pageaddress+pagesize) end of page - length of all records
+//        this.freeSpaceEnd = (this.address+catalog.getPageSize()) - totalLength;
+//    }
 
     public void updateLastUsed() {
         this.lastUsed = Instant.now();
@@ -128,5 +132,22 @@ public class Page {
 
     public void setFreeSpaceEnd(int freeSpaceEnd) {
         this.freeSpaceEnd = freeSpaceEnd;
+    }
+
+    /**
+     * Returns the index of an attribute in the actual records
+     * @param attributeName the name of the attribute
+     * @return the index of the attribute or null if the attribute doesn't exist
+     */
+    public Integer getAttributeIndex(String attributeName){
+        Catalog catalog = Catalog.getInstance();
+        TableSchema table = catalog.getTable(this.tableName);
+        List<Attribute> attributes = table.getAttributes();
+        for (int i = 0; i < attributes.size(); i++) {
+            if(attributes.get(i).getName().equals(attributeName)){
+                return i;
+            }
+        }
+        return null;
     }
 }

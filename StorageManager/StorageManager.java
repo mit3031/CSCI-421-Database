@@ -117,6 +117,9 @@ public class StorageManager {
     public Page selectFirstPage(String tableName) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
         Catalog catalog = Catalog.getInstance();
+        if(!catalog.tableExists(tableName)){
+            throw new Exception("Table " + tableName + " does not exist");
+        }
         Page page = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
         return page;
     }
@@ -127,9 +130,9 @@ public class StorageManager {
      * @param address Address of the table
      * @param tableName Name of the table
      * @return the page at the address
-     * @throws IOException If there is an issue reading the page
+     * @throws Exception Throws an exception if the table does not exist, or if there is an issue reading the page
      */
-    public Page select(int address, String tableName) throws IOException {
+    public Page select(int address, String tableName) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
         return bufferManager.select(address, tableName);
     }

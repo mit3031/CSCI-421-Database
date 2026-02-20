@@ -85,8 +85,13 @@ public class BufferManager {
      * @param tableName The name of the table
      * @return a page corresponding to the table and address
      */
-    public Page select(int address, String tableName) throws IOException {
+    public Page select(int address, String tableName) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        if(!catalog.tableExists(tableName)){
+            throw new Exception("Table " + tableName + " does not exist");
+        }
         Page page = readPage(address, tableName);
+        page.updateLastUsed();
         return page;
     }
 
@@ -148,6 +153,7 @@ public class BufferManager {
             currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
             currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
             currentPage.SetModified(true);
+            currentPage.updateLastUsed();
         }
 
         // Write the final page
@@ -249,6 +255,7 @@ public class BufferManager {
         if (this.bufferSize > 0) {
             this.bufferPages.put(page.getPageAddress(), page);
         }
+        page.updateLastUsed();
     }
 
     private void writePage(Page page) throws IOException {
@@ -457,26 +464,29 @@ public class BufferManager {
         }
     }
 
-    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
-        Page page = this.bufferPages.get(table.getRootPageID());
-        if (page == null) {
-            page = readPage(table.getRootPageID(), table.getTableName());
-        }
-        Catalog catalog = Catalog.getInstance();
-        for(int i = 0; i < attributes.size(); i++) {
-            List<Attribute> previousAttributes= table.getAttributes();
-            int index = 0;
-            for (int j = 0; j < previousAttributes.size(); j++) {
-                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
-                    index = j;
-                }
-            }
-            table.dropAttribute(attributes.get(i));
-            page.removeAttributeFromRecords(index);
-        }
-        page.SetModified(true);
-        page.updateLastUsed();
-    }
+// todo review below comment
+
+// I don't think we need this, changed the way we drop attributes but didn't want to delete it yet
+//    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
+//        Page page = this.bufferPages.get(table.getRootPageID());
+//        if (page == null) {
+//            page = readPage(table.getRootPageID(), table.getTableName());
+//        }
+//        Catalog catalog = Catalog.getInstance();
+//        for(int i = 0; i < attributes.size(); i++) {
+//            List<Attribute> previousAttributes= table.getAttributes();
+//            int index = 0;
+//            for (int j = 0; j < previousAttributes.size(); j++) {
+//                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
+//                    index = j;
+//                }
+//            }
+//            table.dropAttribute(attributes.get(i));
+//            page.removeAttributeFromRecords(index);
+//        }
+//        page.SetModified(true);
+//        page.updateLastUsed();
+//    }
 
     public void AddAttributes(){
         //recompute length
