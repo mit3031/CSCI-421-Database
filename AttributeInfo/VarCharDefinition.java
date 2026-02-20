@@ -10,7 +10,9 @@ public class VarCharDefinition extends AttributeDefinition {
 
     @Override
     public boolean isType(String obj) {
-        return obj.charAt(0) == '"' && obj.charAt(obj.length() - 1) == '"';
+        char first = obj.charAt(0);
+        char last = obj.charAt(obj.length() - 1);
+        return (first == '"' || first == '\'') && first == last;
     }
 
     @Override
