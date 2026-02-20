@@ -1,5 +1,6 @@
 import Common.Logger;
 import DDLParser.ParserDDL;
+import StorageManager.StorageManager;
 
 import java.util.Scanner;
 
@@ -14,6 +15,14 @@ public class JottQL {
      */
     private static void startUp(String dbLocation, int pageSize, int bufferSize,
                                         boolean indexing, boolean debug){
+        try {
+            StorageManager.initDatabase(dbLocation, pageSize, bufferSize);
+
+
+        } catch (Exception e) {
+            System.out.println("An error occurred, could not start Database!");
+            System.exit(1);
+        }
 
 
     }
@@ -22,7 +31,7 @@ public class JottQL {
      * Handle shutdown procedure here
      */
     private static void shutdown(){
-
+        //TODO
     }
 
     /**

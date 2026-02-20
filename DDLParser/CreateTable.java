@@ -31,17 +31,27 @@ public class CreateTable implements Command {
 
         int index = 4;
         //keep parsing until out of stuff
-        while(index<command.length && command[index].contains(")")){
+        while(index<command.length && !command[index].contains(";")){
             try {
                 String attrName = null;
                 AttributeTypeEnum type = null;
                 boolean primary = false;
                 boolean notNull = false;
                 int maxlength = 0; //only for varchars
+                //Logger.log("Parsing phrase: " + command[index]);
+                boolean commaFlag = false;
 
-                while (!command[index].contains(",") &&
-                !command[index].contains(")")){
-                    
+                while (!commaFlag &&
+                        !(command[index].contains(")") && !command[index].contains("("))){
+                        //Logger.log("In inner loop with " + command[index]);
+
+                    if(command[index].contains(",")){
+                        commaFlag = true;
+                        command[index] = command[index].substring(0, command[index].indexOf(","));
+                    }
+
+
+
                     if(attrName == null){
                         //convert to lowercase to allow respect to case insensitivity rules on attributes
                         attrName = command[index].toLowerCase();

@@ -15,6 +15,7 @@ import java.util.List;
 
 import Common.Logger;
 import DDLParser.AlterTableDrop;
+import DDLParser.ParserDDL;
 
 
 public class StorageManager {
@@ -229,6 +230,18 @@ public class StorageManager {
                 } else {
                     System.out.println("✗ FAILED: Data type mismatch");
                 }
+
+                /*
+                System.out.println("Test DDLParser:");
+                System.out.println("--------------------");
+                String command = "CREATE TABLE foo ( x INTEGER PRIMARYKEY );";
+                boolean status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status);
+                command = "CREATE TABLE myTable3 ( x1 CHAR(5), x2 DOUBLE PRIMARYKEY, x3 VARCHAR(10) NOTNULL );";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status);
+                System.out.println();
+                */
 
 //                System.out.println("Test alterTableDrop");
 //                String[] commandKeywords = new String[]{"Alter", "Table", "MixedTable", "DROP", "scOre"};

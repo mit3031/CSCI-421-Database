@@ -100,35 +100,40 @@ public class AlterTableAdd implements Command {
         Attribute newAttr = new Attribute(attName, def, defaultValue);
         List<Attribute> defs = tableSchema.getAttributes();
         defs.add(newAttr);
+        try {
+            //make new schema
+            TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, defs);
 
-        //make new schema
-        TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, defs);
+            StorageManager sm = StorageManager.getStorageManager();
+            sm.CreateTable(newTable);
 
-        StorageManager sm = StorageManager.getStorageManager();
-        sm.CreateTable(newTable);
+            Page pg = sm.selectFirstPage(tableName);
 
-        Page pg = sm.selectFirstPage(tableName);
+            while (pg != null && pg.getNextPage() != -1) {
+                int numRecords = pg.getNumRows();
+                List<List<Object>> newRecords = new ArrayList<>();
+                for (int i = 0; i < numRecords; i++) {
+                    //get the old arrayList
+                    ArrayList<Object> rec = new ArrayList<>(List.copyOf(pg.getRecord(i)));
+                    //append the new record w/ default value to it
+                    rec.add(defaultValue);
 
-        while(pg !=null && pg.getNextPage() != -1 ){
-            int numRecords = pg.getNumRows();
-            List<List<Object>> newRecords = new ArrayList<>();
-            for(int i = 0; i < numRecords; i++) {
-                //get the old arrayList
-                ArrayList<Object> rec = new ArrayList<>(List.copyOf(pg.getRecord(i)));
-                //append the new record w/ default value to it
-                rec.add(defaultValue);
+                    newRecords.add(rec);
+                }
+                //insert these records to new table
+                sm.insert(TEMP_TABLE_NAME, newRecords);
 
-                newRecords.add(rec);
             }
-            //insert these records to new table
-            sm.insert(TEMP_TABLE_NAME, newRecords);
+            //now have copied all records through
+            //delete old table and rename new one
 
+            sm.DropTable(tableSchema);
+
+            cat.renameTable(TEMP_TABLE_NAME, tableName);
+        } catch (Exception e) {
+            Logger.log(e.getMessage());
+            throw new RuntimeException(e);
         }
-        //now have copied all records through
-        //delete old table and rename new one
-
-        sm.DropTable(tableSchema);
-
         //todo rename temp table
 
 
