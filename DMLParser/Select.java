@@ -21,28 +21,38 @@ public class Select implements Command{
             );
         }
 
-        if (!command[0].equals("select") || !command[1].equals("*") || !command[2].equals("from")){
+        // Check keywords (case-insensitive)
+        if (!command[0].equalsIgnoreCase("select") || 
+            !command[1].equals("*") || 
+            !command[2].equalsIgnoreCase("from")){
             throw new SQLSyntaxErrorException(
                     "Invalid select structure: SELECT * FROM <table>;"
             );
         }
 
-        String table = command[3];
+        // Table name - preserve case as provided
+        String tableName = command[3].toLowerCase();
 
-        // TODO: verify that table exists
+        // Verify that table exists
         Catalog cat = Catalog.getInstance();
-        if (!cat.tableExists(table)){
+        if (!cat.tableExists(tableName)){
             throw new SQLSyntaxErrorException(
-                    "Table does not exists"
+                    "Table does not exist: " + tableName
             );
         }
 
-
-        // TODO: once implemented run the actual select command
-        Logger.log("Running select * on table " + table);
+        // Run the actual select command
+        Logger.log("Running SELECT * FROM " + tableName);
         StorageManager store = StorageManager.getStorageManager();
         try {
-            Page currentPage = store.selectFirstPage(table);
+            Page currentPage = store.selectFirstPage(tableName);
+            
+            if (currentPage == null) {
+                // Empty table
+                Logger.log("Table " + tableName + " is empty");
+                return true;
+            }
+            
             while (true){
                 for (int i = 0; i < currentPage.getNumRows(); i++){
                     System.out.println(currentPage.getRecord(i).toString());
@@ -50,11 +60,11 @@ public class Select implements Command{
                 if (currentPage.getNextPage() == -1){
                     break;
                 }
-                currentPage = store.select(currentPage.getNextPage(), table);
+                currentPage = store.select(currentPage.getNextPage(), tableName);
             }
 
         } catch (Exception e) {
-            throw new SQLSyntaxErrorException("Error getting pages");
+            throw new SQLSyntaxErrorException("Error reading from table: " + e.getMessage());
         }
 
         return true;
