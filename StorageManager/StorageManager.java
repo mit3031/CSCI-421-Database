@@ -51,6 +51,16 @@ public class StorageManager {
         catalog.addFirstFreePage(table.getRootPageID());
     }
 
+    public void shutdown() throws IOException {
+        BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.flushAllPages();
+        //bufferManager.saveToDisk();
+    }
+    public void bootup() {
+        //BufferManager bufferManger = BufferManager.getInstance();
+        //bufferManager.loadFromDisk();
+    }
+
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
         this.dbPath = dbPath;
 
@@ -153,7 +163,7 @@ public class StorageManager {
         int totalTests = 0;
         
         try {
-            StorageManager.initDatabase("storageManagerTest", 400, 0);
+            StorageManager.initDatabase("storageManagerTest", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             Catalog cat = Catalog.getInstance();
 
