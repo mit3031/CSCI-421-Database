@@ -2,11 +2,15 @@ package DMLParser;
 
 import Common.Command;
 import Catalog.Catalog;
+import Catalog.TableSchema;
+import AttributeInfo.Attribute;
 import Common.Logger;
 import Common.Page;
 import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
+import java.util.List;
+import java.util.ArrayList;
 
 public class Select implements Command{
 
@@ -53,14 +57,63 @@ public class Select implements Command{
                 return true;
             }
             
+            // Get table schema for column names
+            TableSchema schema = cat.getTable(tableName);
+            List<Attribute> attributes = schema.getAttributes();
+            
+            // Collect all rows first to calculate column widths
+            List<List<Object>> allRows = new ArrayList<>();
             while (true){
                 for (int i = 0; i < currentPage.getNumRows(); i++){
-                    System.out.println(currentPage.getRecord(i).toString());
+                    allRows.add(currentPage.getRecord(i));
                 }
                 if (currentPage.getNextPage() == -1){
                     break;
                 }
                 currentPage = store.select(currentPage.getNextPage(), tableName);
+            }
+            
+            // Calculate column widths
+            int[] columnWidths = new int[attributes.size()];
+            for (int i = 0; i < attributes.size(); i++) {
+                // Start with header name length
+                columnWidths[i] = attributes.get(i).getName().length();
+                
+                // Check all data values
+                for (List<Object> row : allRows) {
+                    String value = formatValue(row.get(i));
+                    columnWidths[i] = Math.max(columnWidths[i], value.length());
+                }
+                
+                // Minimum width of 4 for readability
+                columnWidths[i] = Math.max(columnWidths[i], 4);
+            }
+            
+            // Print header row
+            for (int i = 0; i < attributes.size(); i++) {
+                System.out.print("|");
+                System.out.print(String.format(" %" + columnWidths[i] + "s ", 
+                    attributes.get(i).getName()));
+            }
+            System.out.println("|");
+            
+            // Print separator line
+            for (int i = 0; i < attributes.size(); i++) {
+                System.out.print("-");
+                for (int j = 0; j < columnWidths[i] + 2; j++) {
+                    System.out.print("-");
+                }
+            }
+            System.out.println("-");
+            
+            // Print data rows
+            for (List<Object> row : allRows) {
+                for (int i = 0; i < row.size(); i++) {
+                    System.out.print("|");
+                    String value = formatValue(row.get(i));
+                    System.out.print(String.format(" %" + columnWidths[i] + "s ", value));
+                }
+                System.out.println("|");
             }
 
         } catch (Exception e) {
@@ -68,6 +121,22 @@ public class Select implements Command{
         }
 
         return true;
+    }
+    
+    /**
+     * Formats a value for display in the table
+     */
+    private String formatValue(Object value) {
+        if (value == null) {
+            return "NULL";
+        }
+        if (value instanceof Boolean) {
+            return ((Boolean) value) ? "True" : "False";
+        }
+        if (value instanceof String && ((String) value).isEmpty()) {
+            return "";
+        }
+        return value.toString();
     }
 
 }
