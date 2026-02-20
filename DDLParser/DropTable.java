@@ -1,7 +1,10 @@
 package DDLParser;
 
+import Catalog.Catalog;
 import Common.Command;
 import Common.Logger;
+import StorageManager.StorageManager;
+import Catalog.TableSchema;
 
 import java.sql.SQLSyntaxErrorException;
 
@@ -19,6 +22,21 @@ public class DropTable implements Command {
         tableName = tableName.substring(tableName.indexOf(";"));
 
         //TODO call storage manager to delete that table
+        try{
+            StorageManager sm = StorageManager.getStorageManager();
+            Catalog cat = Catalog.getInstance();
+            TableSchema table = cat.getTable(tableName);
+            if(table == null){
+                System.out.println("Table " + tableName + " does not exist!");
+                Logger.log("Table " + tableName + " not found in catalog");
+                return false;
+            }
+
+            sm.DropTable(table);
+        } catch (Exception e) {
+            Logger.log(e.getMessage());
+            throw new RuntimeException(e);
+        }
         return true;
 
     }
