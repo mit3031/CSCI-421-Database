@@ -145,8 +145,8 @@ public class BufferManager {
             currentPage.setNumRows(currentPage.getNumRows() + 1);
 
             // Update free space pointers
-            currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
-            currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
+            //currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
+            //currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
             currentPage.SetModified(true);
         }
 
@@ -186,13 +186,14 @@ public class BufferManager {
     /**
      * Flush all modified pages to disk
      */
-    private void flushAllPages() throws IOException {
+    public void flushAllPages() throws IOException {
         for (Page page : bufferPages.values()) {
             if (page.getModified()) {
                 writePage(page);
                 page.SetModified(false);
             }
         }
+        this.bufferPages.clear();
     }
 
     /**
@@ -272,45 +273,13 @@ public class BufferManager {
             TableSchema table = catalog.getTable(page.getTableName());
             List<Attribute> attributes = table.getAttributes();
 
-            // Calculate total size: fixed-size record data + VARCHAR heap data
-            int totalFixedSize = 0;  // Fixed-size record data (null bits + fixed fields + VARCHAR pointers)
-            int totalVarcharSize = 0; // Variable-length data stored at page end
-
-            for (int i = 0; i < page.getNumRows(); i++) {
-                ArrayList<Object> rec = page.getRecord(i);
-                int nullBitArray = 0;
-                int recSize = Integer.BYTES; // null bit array
-
-                for (int j = 0; j < rec.size(); j++) {
-                    if (rec.get(j) == null) {
-                        nullBitArray += (int)Math.pow(2,j);
-                    } else {
-                        if (attributes.get(j).getDefinition().getType() == VARCHAR) {
-                            // VARCHAR: store pointer (4 bytes) + length (4 bytes) in record
-                            recSize += Integer.BYTES * 2;
-                            // Actual VARCHAR data goes to the end
-                            totalVarcharSize += rec.get(j).toString().getBytes(StandardCharsets.UTF_8).length;
-                        } else {
-                            recSize += attributes.get(j).getDefinition().getByteSize();
-                        }
-                    }
-                }
-                totalFixedSize += recSize;
-            }
-
-            int totalDataSize = totalFixedSize + totalVarcharSize;
-
-            // Records start from the end of the page and grow backward
-            int currentRecordPos = page.getPageAddress() + catalog.getPageSize() - totalDataSize;
-            // VARCHAR data starts at the very end and grows backward (toward records)
-            int currentVarcharPos = page.getPageAddress() + catalog.getPageSize();
-
+            int end = page.getPageAddress()+catalog.getPageSize();
             //loop for every record
             for (int i = 0; i < page.getNumRows(); i++) {
                 ArrayList<Object> record = page.getRecord(i);
                 int recordLength = 0;
                 int nullBitArray = 0;
-
+                long fixedEnd = 0;
                 // Calculate null bit array and fixed record length
                 for (int j = 0; j<record.size(); j++) {
                     if (record.get(j) == null) {
@@ -318,22 +287,27 @@ public class BufferManager {
                     } else {
                         if (attributes.get(j).getDefinition().getType() == VARCHAR) {
                             // VARCHAR: pointer + length in the record (actual data stored separately)
-                            recordLength += Integer.BYTES * 2;
+                            recordLength += Integer.BYTES * 2 + record.get(j).toString().getBytes(StandardCharsets.UTF_8).length;
+                            fixedEnd += Integer.BYTES * 2;
                         } else {
                             recordLength += attributes.get(j).getDefinition().getByteSize();
+                            fixedEnd += attributes.get(j).getDefinition().getByteSize();
                         }
                     }
                 }
                 // Add size of null bit array
                 recordLength += Integer.BYTES;
+                fixedEnd     += Integer.BYTES;
 
                 // Save directory position and write offset and length
-                long directoryPos = currentPage.getFilePointer();
-                currentPage.writeInt(currentRecordPos);
+                end = end-recordLength;
+                fixedEnd    += end;
+                currentPage.writeInt(end);
                 currentPage.writeInt(recordLength);
+                long start = currentPage.getFilePointer();
 
                 // Seek to where record data will be written
-                currentPage.seek(currentRecordPos);
+                currentPage.seek(end);
 
                 // Write null bit array
                 currentPage.writeInt(nullBitArray);
@@ -356,29 +330,19 @@ public class BufferManager {
                                 currentPage.write(((String) record.get(j)).getBytes(StandardCharsets.UTF_8));
                                 break;
                             case VARCHAR:
-                                // Store VARCHAR at the end of the page
-                                byte[] varcharBytes = ((String) record.get(j)).getBytes(StandardCharsets.UTF_8);
-                                currentVarcharPos -= varcharBytes.length;
-
-                                // Write pointer and length in the record
-                                currentPage.writeInt(currentVarcharPos); // pointer to data
-                                currentPage.writeInt(varcharBytes.length); // length of data
-
-                                // Save current position, write VARCHAR data, then return
-                                long savedPos = currentPage.getFilePointer();
-                                currentPage.seek(currentVarcharPos);
-                                currentPage.write(varcharBytes);
-                                currentPage.seek(savedPos);
+                                currentPage.writeInt((int)fixedEnd);
+                                currentPage.writeInt(((String) record.get(j)).getBytes(StandardCharsets.UTF_8).length);
+                                long currentLoc = currentPage.getFilePointer();
+                                currentPage.seek(fixedEnd);
+                                currentPage.write(((String)record.get(j)).getBytes());
+                                fixedEnd = currentPage.getFilePointer();
+                                currentPage.seek(currentLoc);
                                 break;
                         }
                     }
                 }
-
-                // Move currentRecordPos forward for next record
-                currentRecordPos += recordLength;
-
-                // Return to directory for next entry
-                currentPage.seek(directoryPos + Integer.BYTES * 2);
+                // Return to start
+                currentPage.seek(start);
             }
         }
     }
