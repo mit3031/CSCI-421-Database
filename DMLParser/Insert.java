@@ -17,29 +17,28 @@ import java.util.Set;
 
 public class Insert implements Command {
 
-    // INSERT INTO <tableName> VALUES ( <row1> ), ( <row2> ), ... ;
+    // INSERT <tableName> VALUES ( <row1> ), ( <row2> ), ... ;
     // Each row contains comma-separated values
-    // Example: INSERT INTO Student VALUES (1, "John Doe", 3.5), (2, "Jane Smith", 3.8);
+    // Example: INSERT Student VALUES (1, "John Doe", 3.5), (2, "Jane Smith", 3.8);
 
-    private final String VALID_SYNTAX = "INSERT INTO <table> VALUES ( <val1>, <val2>, ... ), ( ... );";
+    private final String VALID_SYNTAX = "INSERT <table> VALUES ( <val1>, <val2>, ... ), ( ... );";
 
     @Override
     public boolean run(String[] command) throws SQLSyntaxErrorException {
 
-        // check if there is at least 5 elements: INSERT INTO <table> VALUES <values_clause>
-        if (command.length < 5){
+        // check if there is at least 4 elements: INSERT <table> VALUES <values_clause>
+        if (command.length < 4){
             throw new SQLSyntaxErrorException("Invalid Syntax: " + this.VALID_SYNTAX);
         }
 
-        // check if INSERT INTO <table> and VALUES are accounted for
+        // check if INSERT <table> and VALUES are accounted for
         if (!command[0].equalsIgnoreCase("INSERT") || 
-            !command[1].equalsIgnoreCase("INTO") || 
-            !command[3].equalsIgnoreCase("VALUES")){
+            !command[2].equalsIgnoreCase("VALUES")){
             throw new SQLSyntaxErrorException("Invalid Syntax: " + this.VALID_SYNTAX);
         }
 
         // Get table name (preserve case from user, but convert to lowercase for lookups)
-        String tableName = command[2].toLowerCase();
+        String tableName = command[1].toLowerCase();
         
         // Check if table exists
         Catalog catalog = Catalog.getInstance();
@@ -52,8 +51,8 @@ public class Insert implements Command {
         List<Attribute> attributes = table.getAttributes();
         int numAttributes = attributes.size();
 
-        // Parse the VALUES clause - it's in command[4] as a single string
-        String valuesString = command[4].trim();
+        // Parse the VALUES clause - it's in command[3] as a single string
+        String valuesString = command[3].trim();
 
         // Parse rows - split by "),(" pattern
         List<List<String>> parsedRows = parseRows(valuesString);

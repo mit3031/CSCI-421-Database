@@ -75,7 +75,7 @@ public class InsertTest {
                 store.CreateTable(table1);
                 
                 // Insert using parser
-                ParserDML.runCommand("INSERT INTO inttable VALUES (1, 100);");
+                ParserDML.runCommand("INSERT inttable VALUES (1, 100);");
                 
                 // Verify
                 Page page = store.selectFirstPage("inttable");
@@ -110,9 +110,9 @@ public class InsertTest {
                 store.CreateTable(table2);
                 
                 // Insert with double quotes
-                ParserDML.runCommand("INSERT INTO stringtable VALUES (1, \"Alice\");");
+                ParserDML.runCommand("INSERT stringtable VALUES (1, \"Alice\");");
                 // Insert with single quotes
-                ParserDML.runCommand("INSERT INTO stringtable VALUES (2, 'Bob');");
+                ParserDML.runCommand("INSERT stringtable VALUES (2, 'Bob');");
                 
                 // Verify
                 Page page = store.selectFirstPage("stringtable");
@@ -148,8 +148,8 @@ public class InsertTest {
                 store.CreateTable(table3);
                 
                 // Insert strings with spaces
-                ParserDML.runCommand("INSERT INTO spacetable VALUES (1, \"John Doe\");");
-                ParserDML.runCommand("INSERT INTO spacetable VALUES (2, \"Jane Mary Smith\");");
+                ParserDML.runCommand("INSERT spacetable VALUES (1, \"John Doe\");");
+                ParserDML.runCommand("INSERT spacetable VALUES (2, \"Jane Mary Smith\");");
                 
                 // Verify
                 Page page = store.selectFirstPage("spacetable");
@@ -187,8 +187,8 @@ public class InsertTest {
                 store.CreateTable(table4);
                 
                 // Insert mixed types
-                ParserDML.runCommand("INSERT INTO mixedtable VALUES (1, \"Alice\", 95.5, true);");
-                ParserDML.runCommand("INSERT INTO mixedtable VALUES (2, \"Bob\", 87.3, false);");
+                ParserDML.runCommand("INSERT mixedtable VALUES (1, \"Alice\", 95.5, true);");
+                ParserDML.runCommand("INSERT mixedtable VALUES (2, \"Bob\", 87.3, false);");
                 
                 // Verify
                 Page page = store.selectFirstPage("mixedtable");
@@ -224,7 +224,7 @@ public class InsertTest {
                 store.CreateTable(table5);
                 
                 // Insert multiple rows
-                ParserDML.runCommand("INSERT INTO multitable VALUES (1, 10), (2, 20), (3, 30);");
+                ParserDML.runCommand("INSERT multitable VALUES (1, 10), (2, 20), (3, 30);");
                 
                 // Verify
                 Page page = store.selectFirstPage("multitable");
@@ -254,12 +254,12 @@ public class InsertTest {
                 store.CreateTable(table6);
                 
                 // First insert should succeed
-                ParserDML.runCommand("INSERT INTO pktable VALUES (1, 100);");
+                ParserDML.runCommand("INSERT pktable VALUES (1, 100);");
                 
                 boolean violationDetected = false;
                 try {
                     // Second insert with same PK should fail
-                    ParserDML.runCommand("INSERT INTO pktable VALUES (1, 200);");
+                    ParserDML.runCommand("INSERT pktable VALUES (1, 200);");
                 } catch (Exception e) {
                     if (e.getMessage().contains("Primary key") || e.getMessage().contains("primary key")) {
                         violationDetected = true;
@@ -295,7 +295,7 @@ public class InsertTest {
                 boolean violationDetected = false;
                 try {
                     // This should fail - duplicate PK in same batch
-                    ParserDML.runCommand("INSERT INTO pkbatch VALUES (1, 10), (1, 20);");
+                    ParserDML.runCommand("INSERT pkbatch VALUES (1, 10), (1, 20);");
                 } catch (Exception e) {
                     if (e.getMessage().contains("Duplicate") || e.getMessage().contains("duplicate")) {
                         violationDetected = true;
@@ -331,7 +331,7 @@ public class InsertTest {
                 boolean typeErrorDetected = false;
                 try {
                     // This should fail - string where integer expected
-                    ParserDML.runCommand("INSERT INTO typetable VALUES (1, \"notanumber\");");
+                    ParserDML.runCommand("INSERT typetable VALUES (1, \"notanumber\");");
                 } catch (Exception e) {
                     if (e.getMessage().contains("Invalid") || e.getMessage().contains("type") || 
                         e.getMessage().contains("convert")) {
@@ -366,7 +366,7 @@ public class InsertTest {
                 store.CreateTable(table9);
                 
                 // Insert with NULL - should succeed
-                ParserDML.runCommand("INSERT INTO nulltable VALUES (1, NULL);");
+                ParserDML.runCommand("INSERT nulltable VALUES (1, NULL);");
                 
                 // Verify
                 Page page = store.selectFirstPage("nulltable");
@@ -403,7 +403,7 @@ public class InsertTest {
                 boolean errorDetected = false;
                 try {
                     // Too few columns
-                    ParserDML.runCommand("INSERT INTO coltable VALUES (1);");
+                    ParserDML.runCommand("INSERT coltable VALUES (1);");
                 } catch (Exception e) {
                     if (e.getMessage().contains("values") || e.getMessage().contains("expected")) {
                         errorDetected = true;
