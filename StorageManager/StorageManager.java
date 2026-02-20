@@ -157,7 +157,7 @@ public class StorageManager {
         int totalTests = 0;
         
         try {
-            StorageManager.initDatabase("storageManagerTest", 400, 0);
+            StorageManager.initDatabase("storageManagerTest", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             Catalog cat = Catalog.getInstance();
 

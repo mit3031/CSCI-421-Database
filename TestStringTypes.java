@@ -16,7 +16,7 @@ public class TestStringTypes {
         int totalTests = 0;
         
         try {
-            StorageManager.initDatabase("teststringdb", 400, 0);
+            StorageManager.initDatabase("teststringdb", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             
             System.out.println("\n========================================");

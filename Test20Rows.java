@@ -14,7 +14,7 @@ public class Test20Rows {
         Logger.initDebug(debugActive);
         
         try {
-            StorageManager.initDatabase("test20db", 400, 0);
+            StorageManager.initDatabase("test20db", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             
             System.out.println("\n=== Testing 20 Row Insert ===\n");

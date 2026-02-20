@@ -9,12 +9,13 @@ import Common.Logger;
 import java.util.*;
 
 public class Test200Rows {
+    
     public static void main(String[] args) {
         String[] debugActive = new String[]{"--debug"};
         Logger.initDebug(debugActive);
         
         try {
-            StorageManager.initDatabase("test200db", 400, 0);
+            StorageManager.initDatabase("test200db", 400, 10);
             StorageManager store = StorageManager.getStorageManager();
             
             System.out.println("\n=== Testing 200 Row Insert ===\n");
