@@ -39,8 +39,11 @@ public class AlterTableAdd implements Command {
         }
 
         String attName = command[NEW_ATT_NAME_INDEX];
-        String attType = command[NEW_ATT_TYPE_INDEX];
 
+        String attType = command[NEW_ATT_TYPE_INDEX];
+        if(attType.contains(";")){
+            attType = attType.substring(0, attType.indexOf(";"));
+        }
 
         //convert attribute name to lowercase and check if alphanumeric
         attName = attName.toLowerCase();
@@ -60,6 +63,10 @@ public class AlterTableAdd implements Command {
         boolean notNull = false;
         //now we can get rest of info about this
         for(int i = 6; i<command.length; i++) {
+            if(command[i].contains(";")){
+                command[i] = command[i].substring(0, command[i].indexOf(";"));
+            }
+
             if(command[i].equals("NOTNULL")) {
                 notNull = true;
             }
@@ -109,7 +116,7 @@ public class AlterTableAdd implements Command {
 
             Page pg = sm.selectFirstPage(tableName);
 
-            while (pg != null && pg.getNextPage() != -1) {
+            while (pg != null) {
                 int numRecords = pg.getNumRows();
                 List<List<Object>> newRecords = new ArrayList<>();
                 for (int i = 0; i < numRecords; i++) {
@@ -122,6 +129,13 @@ public class AlterTableAdd implements Command {
                 }
                 //insert these records to new table
                 sm.insert(TEMP_TABLE_NAME, newRecords);
+                int nextPage = pg.getNextPage();
+                if(nextPage!= -1) {
+                    pg = sm.select(nextPage, tableName);
+                }
+                else{
+                    pg = null;
+                }
 
             }
             //now have copied all records through
@@ -129,15 +143,15 @@ public class AlterTableAdd implements Command {
 
             sm.DropTable(tableSchema);
 
+
             cat.renameTable(TEMP_TABLE_NAME, tableName);
         } catch (Exception e) {
             Logger.log(e.getMessage());
             throw new RuntimeException(e);
         }
-        //todo rename temp table
 
 
 
-        return false;
+        return true;
     }
 }

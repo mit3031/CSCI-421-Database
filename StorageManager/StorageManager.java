@@ -16,6 +16,7 @@ import java.util.List;
 import Common.Logger;
 import DDLParser.AlterTableDrop;
 import DDLParser.ParserDDL;
+import DMLParser.ParserDML;
 
 
 public class StorageManager {
@@ -241,17 +242,37 @@ public class StorageManager {
                     System.out.println("✗ FAILED: Data type mismatch");
                 }
 
-                /*
+
                 System.out.println("Test DDLParser:");
                 System.out.println("--------------------");
                 String command = "CREATE TABLE foo ( x INTEGER PRIMARYKEY );";
                 boolean status = ParserDDL.parseCommand(command);
                 System.out.println("Status: " + status);
-                command = "CREATE TABLE myTable3 ( x1 CHAR(5), x2 DOUBLE PRIMARYKEY, x3 VARCHAR(10) NOTNULL );";
+                command = "CREATE TABLE myTable3 ( x1 INTEGER, x2 DOUBLE PRIMARYKEY, x3 VARCHAR(10) NOTNULL );";
                 status = ParserDDL.parseCommand(command);
                 System.out.println("Status: " + status);
                 System.out.println();
-                */
+
+
+                TableSchema tab = cat.getTable("mytable3");
+                for(Attribute a : tab.getAttributes()){
+                    System.out.println(a.getName() +" " +  a.getDefinition().getType());
+                }
+
+
+
+                command = "INSERT INTO myTable3 VALUES ( 1, 2.0, \"hi!\");";
+                ParserDML.runCommand(command);
+                String selectCommand = "SELECT * FROM myTable3;";
+                ParserDML.runCommand(selectCommand);
+
+                System.out.println("Test Alter Add");
+                command = "ALTER TABLE myTable3 ADD x14 INTEGER;";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status );
+                ParserDML.runCommand(selectCommand);
+
+
 
 //                System.out.println("Test alterTableDrop");
 //                String[] commandKeywords = new String[]{"Alter", "Table", "MixedTable", "DROP", "scOre"};
