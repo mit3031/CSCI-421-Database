@@ -1,0 +1,251 @@
+sxjcs@fibonnaci:~$ java JottQL database 4096 10 False
+
+Welcome to JottQL!
+Accessing database location....
+No database found. Creating new database....
+
+JottQL> SELECT * FROM table1;
+No such table: table1
+
+JottQL> CREATE TABLE table1 (
+x INTEGER PRIMARYKEY
+);
+Table created successfully
+
+JottQL> SELECT * FROM table1;
+
+| x |
+
+JottQL> INSERT table1 VALUES ( 1 );
+1 rows inserted successfully
+
+JottQL> SELECT *
+FROM table1;
+
+| x |
+-----
+| 1 |
+
+JottQL> INSERT table1 VALUES (
+2, 3, 7, 8, 5, 4 );
+6 rows inserted successfully
+
+JottQL> SELECT * FROM table1;
+
+| x |
+-----
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
+| 7 |
+| 8 |
+
+JottQL> INSERT table1 VALUES ( 4 );
+Error: duplicate primary key value: ( 4 )
+0 rows inserted successfully
+
+JottQL> SELECT * FROM table1;
+
+| x |
+-----
+| 1 |
+| 2 |
+| 3 |
+| 4 |
+| 5 |
+| 7 |
+| 8 |
+
+JottQL> INSERT table1 VALUES ( 6, 21, 2, 10 );
+Error: duplicate primary key value: ( 2 )
+2 rows inserted successfully
+
+JottQL> SELECT * FROM table1;
+
+|  x |
+------
+|  1 |
+|  2 |
+|  3 |
+|  4 |
+|  5 |
+|  6 |
+|  7 |
+|  8 |
+| 21 |
+
+JottQL> ALTER TABLE table1 ADD abc DOUBLE;
+Table altered successfully
+
+JottQL> SELECT * FROM table1;
+
+|  x |  abc |
+-------------
+|  1 | NULL |
+|  2 | NULL |
+|  3 | NULL |
+|  4 | NULL |
+|  5 | NULL |
+|  6 | NULL |
+|  7 | NULL |
+|  8 | NULL |
+| 21 | NULL |
+
+JottQL> ALTER TABLE table1 
+ADD str CHAR(5) 
+DEFAULT "hello";
+Table altered successfully
+
+JottQL> SELECT * FROM table1;
+
+|  x |  abc |   str |
+---------------------
+|  1 | NULL | hello |
+|  2 | NULL | hello |
+|  3 | NULL | hello |
+|  4 | NULL | hello |
+|  5 | NULL | hello |
+|  6 | NULL | hello |
+|  7 | NULL | hello |
+|  8 | NULL | hello |
+| 21 | NULL | hello |
+
+JottQL> ALTER TABLE table1 ADD str2 NOTNULL;
+Error: Not null requires a default value when altering a table
+
+JottQL> SELECT * FROM table1;
+
+|  x |  abc |   str |
+---------------------
+|  1 | NULL | hello |
+|  2 | NULL | hello |
+|  3 | NULL | hello |
+|  4 | NULL | hello |
+|  5 | NULL | hello |
+|  6 | NULL | hello |
+|  7 | NULL | hello |
+|  8 | NULL | hello |
+| 21 | NULL | hello |
+
+JottQL> ALTER TABLE table1 DROP x;
+Error: Cannot drop primary key attribute
+
+JottQL> ALTER TABLE table1 DROP abc;
+Table altered successfully
+
+JottQL> SELECT * FROM table1;
+
+|  x |   str |
+--------------
+|  1 | hello |
+|  2 | hello |
+|  3 | hello |
+|  4 | hello |
+|  5 | hello |
+|  6 | hello |
+|  7 | hello |
+|  8 | hello |
+| 21 | hello |
+
+JottQL> <QUIT>
+Purging page buffer....
+Writing catalog to hardware....
+Shutting down the database...
+
+sxjcs@fibonnaci:~$ java JottQL database 3000 15 False
+
+Welcome to JottQL!
+Accessing database location....
+Database found. Restarting database....
+Ignoring provided page size. Using prior size of 4096....
+
+JottQL> SELECT * FROM table1;
+
+|  x |   str |
+--------------
+|  1 | hello |
+|  2 | hello |
+|  3 | hello |
+|  4 | hello |
+|  5 | hello |
+|  6 | hello |
+|  7 | hello |
+|  8 | hello |
+| 21 | hello |
+
+JottQL> SELECT * FROM table2;
+No such table: table2
+
+JottQL> CREATE TABLE table2 (
+d1 DOUBLE NOTNULL,
+c1 CHAR(5) PRIMARYKEY,
+v1 VARCHAR(6),
+b1 BOOLEAN
+);
+
+Table created successfully
+
+JottQL> SELECT * FROM table2;
+
+| d1 | c1 | v1 | b1 |
+---------------------
+
+JottQL> INSERT table2 VALUES ( 2.1 "hello" "hi" True );
+1 rows inserted successfully
+
+JottQL> SELECT * FROM table2;
+
+|  d1 |    c1 | v1 |   b1 |
+---------------------------
+| 2.1 | hello | hi | True |
+
+JottQL> INSERT table2 VALUES (
+3.25 "12345" NULL False,
+1.12 "abcde" "" True,
+0.15 "scott" "tested" NULL );
+3 rows inserted successfully
+
+JottQL> SELECT * FROM table2;
+
+|   d1 |    c1 |     v1 |      b1 |
+-----------------------------------
+| 3.25 | 12345 |   NULL |   False |
+| 1.12 | abcde |        |    True |
+| 2.1  | hello |     hi |    True |
+| 0.15 | scott | tested |    NULL |
+
+JottQL> INSERT table2 VALUES ( NULL "23456" "hey" False );
+Error: Attribute d1 cannot be null: ( NULL "23456" "hey" False )
+0 rows inserted successfully
+
+JottQL> INSERT table2 VALUES ( 7.89 "2345" "hey" False );
+Error: Attribute c1 must be 5 characters: ( 7.89 "2345" "hey" False )
+0 rows inserted successfully
+
+JottQL> INSERT table2 VALUES ( 7.89 "23456" "heythere" False );
+Error: Attribute v1 must be between 0 and 6 characters: ( 7.89 "23456" "heythere" False )
+0 rows inserted successfully
+
+JottQL> INSERT table2 VALUES ( 7.89 "23456" "hey" false );
+Error: Attribute b1 must be values True, False or NULL: ( 7.89 "23456" "hey" false )
+0 rows inserted successfully
+
+JottQL> INSERT table2 VALUES ( 7.89 "23456" "hey" false );
+Error: Attribute d1 must be a double value: ( 7 "23456" "hey" False )
+0 rows inserted successfully
+
+JottQL> SELECT * FROM table2;
+
+|   d1 |    c1 |     v1 |      b1 |
+-----------------------------------
+| 3.25 | 12345 |   NULL |   False |
+| 1.12 | abcde |        |    True |
+| 2.1  | hello |     hi |    True |
+| 0.15 | scott | tested |    NULL |
+
+JottQL> <QUIT>
+Purging page buffer....
+Writing catalog to hardware....
+Shutting down the database...
