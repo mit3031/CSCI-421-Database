@@ -76,6 +76,7 @@ public class JottQL {
 
             while (true) {
                 try {
+                System.out.print("JottQL> ");
                 boolean commandReady = false;
                 String message = "";
                 while(!commandReady) {

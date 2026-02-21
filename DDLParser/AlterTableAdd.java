@@ -27,6 +27,8 @@ public class AlterTableAdd implements Command {
     public boolean run(String[] command) throws SQLSyntaxErrorException {
         if(command.length <MIN_QUERY_LEN) {
             Logger.log("Command too short for Alter Table Drop! Min. Len " +  MIN_QUERY_LEN + " Got " + command.length);
+            System.out.println("Command too short!");
+            return false;
         }
 
         String tableName =  command[TABLE_NAME_INDEX].toLowerCase();
@@ -48,6 +50,7 @@ public class AlterTableAdd implements Command {
         //convert attribute name to lowercase and check if alphanumeric
         attName = attName.toLowerCase();
         if (!attName.matches("^[a-zA-Z0-9]+$")) {
+            System.out.println("Attribute name " + attName + " is invalid!");
             Logger.log("Invalid attribute name " + attName);
             return false;
         }
@@ -55,6 +58,7 @@ public class AlterTableAdd implements Command {
         //check that attribute does not already exist for this table
         for(Attribute att : tableSchema.getAttributes()) {
             if(att.getName().equals(attName)) {
+                System.out.println(att.getName() + " is already in table!");
                 Logger.log("Alter table attribute " + attName + " already exists!");
                 return false;
             }

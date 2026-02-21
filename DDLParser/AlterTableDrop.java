@@ -39,6 +39,7 @@ public class AlterTableDrop implements Command {
 
         TableSchema originalTable = catalog.getTable(tableName);
         if (originalTable == null) {
+            System.out.println("Table " + tableName + " does not exist!");
             Logger.log("Table " + tableName + " not found");
             return false;
         }
@@ -57,6 +58,7 @@ public class AlterTableDrop implements Command {
         
         // Check if attribute exists
         if (attributeToDrop == null) {
+            System.out.println("Attribute " + attributeNameToDrop + " does not exist in table " + tableName);
             Logger.log("Attribute " + attributeNameToDrop + " not found in table " + tableName);
             return false;
         }
