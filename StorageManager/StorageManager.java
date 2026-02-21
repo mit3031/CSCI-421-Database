@@ -162,6 +162,12 @@ public class StorageManager {
         bufferManager.insert(tableName, rows);
     }
 
+    public void insertSingleRow(String tableName, List<Object> row) throws Exception {
+        List<List<Object>> singleRowBatch = new ArrayList<>();
+        singleRowBatch.add(row);
+        this.insert(tableName, singleRowBatch);
+    }
+
     public static void main(String[] args){
         String[] debugActive = new String[]{"--debug"};
         Logger.initDebug(debugActive);

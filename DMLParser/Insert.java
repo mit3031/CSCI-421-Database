@@ -84,21 +84,29 @@ public class Insert implements Command {
             typedRows.add(typedRow);
         }
 
-        // Check for primary key violations
-        checkPrimaryKeyViolations(tableName, attributes, typedRows);
-
-        // Insert the rows using StorageManager
+        // Insert rows one by one and check PK per row
         try {
             StorageManager store = StorageManager.getStorageManager();
-            store.insert(tableName, typedRows);
+            Set<String> pkValuesInBatch = new HashSet<>(); // keep batch duplicates
+
+            for (int i = 0; i < typedRows.size(); i++) {
+                List<Object> row = typedRows.get(i);
+
+                // revised PK check checks this row against table and batch
+                checkPrimaryKeyViolations(tableName, attributes, row, pkValuesInBatch, i + 1);
+
+                // Insert the row
+                store.insertSingleRow(tableName, row);
+            }
+
             System.out.println("Successfully inserted " + typedRows.size() + " row(s) into " + tableName);
+
         } catch (Exception e) {
             throw new SQLSyntaxErrorException("Error inserting data: " + e.getMessage());
         }
 
         return true;
     }
-
     /**
      * Parses the VALUES clause to extract individual rows
      * JottQL syntax: VALUES ( val1, val2, val3 )
@@ -303,10 +311,14 @@ public class Insert implements Command {
      * Checks for primary key violations by:
      * 1. Checking for duplicates within the batch being inserted
      * 2. Checking against existing data in the table
+     *
+     * Handles row by row insertion. The "row" argument is a single row to check,
+     * and "pkValuesInBatch" tracks PKs that are already inserted in the batch
      */
-    private void checkPrimaryKeyViolations(String tableName, List<Attribute> attributes, 
-                                          List<List<Object>> rows) throws SQLSyntaxErrorException {
-        
+    private void checkPrimaryKeyViolations(String tableName, List<Attribute> attributes,
+                                           List<Object> row, Set<String> pkValuesInBatch,
+                                           int rowNum) throws SQLSyntaxErrorException {
+
         // Find primary key column(s)
         List<Integer> pkIndices = new ArrayList<>();
         for (int i = 0; i < attributes.size(); i++) {
@@ -321,70 +333,55 @@ public class Insert implements Command {
         }
 
         // Check for duplicates within the batch
-        Set<String> pkValuesInBatch = new HashSet<>();
-        for (int i = 0; i < rows.size(); i++) {
-            List<Object> row = rows.get(i);
-            StringBuilder pkValue = new StringBuilder();
-            
-            for (int pkIdx : pkIndices) {
-                Object val = row.get(pkIdx);
-                if (val == null) {
-                    throw new SQLSyntaxErrorException(
-                        "Row " + (i + 1) + ": Primary key cannot be NULL"
-                    );
-                }
-                pkValue.append(val.toString()).append("|");
-            }
-            
-            String pkKey = pkValue.toString();
-            if (pkValuesInBatch.contains(pkKey)) {
+        StringBuilder pkValue = new StringBuilder();
+        for (int pkIdx : pkIndices) {
+            Object val = row.get(pkIdx);
+            if (val == null) {
                 throw new SQLSyntaxErrorException(
-                    "Duplicate primary key value in batch at row " + (i + 1)
+                        "Row " + rowNum + ": Primary key cannot be NULL"
                 );
             }
-            pkValuesInBatch.add(pkKey);
+            pkValue.append(val.toString()).append("|");
+        }
+        String pkKey = pkValue.toString();
+        if (pkValuesInBatch.contains(pkKey)) {
+            throw new SQLSyntaxErrorException(
+                    "Row " + rowNum + ": Duplicate primary key value in batch"
+            );
         }
 
         // Check against existing data in table
         try {
             StorageManager store = StorageManager.getStorageManager();
             Page currentPage = store.selectFirstPage(tableName);
-            
-            Set<String> existingPKs = new HashSet<>();
-            
+
             while (currentPage != null) {
                 for (int i = 0; i < currentPage.getNumRows(); i++) {
                     List<Object> existingRow = currentPage.getRecord(i);
-                    StringBuilder pkValue = new StringBuilder();
-                    
+                    StringBuilder existingPK = new StringBuilder();
                     for (int pkIdx : pkIndices) {
                         Object val = existingRow.get(pkIdx);
-                        pkValue.append(val != null ? val.toString() : "NULL").append("|");
+                        existingPK.append(val != null ? val.toString() : "NULL").append("|");
                     }
-                    
-                    existingPKs.add(pkValue.toString());
+                    if (existingPK.toString().equals(pkKey)) {
+                        throw new SQLSyntaxErrorException(
+                                "Row " + rowNum + ": Primary key violation, value already exists in table"
+                        );
+                    }
                 }
-                
-                if (currentPage.getNextPage() == -1) {
-                    break;
-                }
+
+                if (currentPage.getNextPage() == -1) break;
                 currentPage = store.select(currentPage.getNextPage(), tableName);
             }
-            
-            // Check if any new PKs conflict with existing ones
-            for (String newPK : pkValuesInBatch) {
-                if (existingPKs.contains(newPK)) {
-                    throw new SQLSyntaxErrorException(
-                        "Primary key violation: value already exists in table"
-                    );
-                }
-            }
-            
+
         } catch (Exception e) {
             if (e instanceof SQLSyntaxErrorException) {
                 throw (SQLSyntaxErrorException) e;
             }
             throw new SQLSyntaxErrorException("Error checking primary key constraints: " + e.getMessage());
         }
+
+        // Add pk to batch set if inserted
+        pkValuesInBatch.add(pkKey);
     }
 }
