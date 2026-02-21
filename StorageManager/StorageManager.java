@@ -54,7 +54,9 @@ public class StorageManager {
 
     public void shutdown() throws IOException {
         BufferManager bufferManager = BufferManager.getInstance();
+        System.out.println("Purging buffer...");
         bufferManager.flushAllPages();
+        System.out.println("Writing catalog to hardware...");
         bufferManager.saveToDisk();
     }
     public void bootup() {
@@ -81,20 +83,24 @@ public class StorageManager {
             }
         }
 
+        System.out.println("Finding database...");
         // 2. Create the database.bin file inside the directory
         // Use File.separator to ensure this works on both Windows and Linux/Mac
         File dbFile = new File(dbPath + File.separator + "database.bin");
         this.databaseFilePath = dbPath + File.separator + "database.bin";
 
         if (!dbFile.exists()) {
+            System.out.println("No database found, Creating a new database...");
             try {
                 if (dbFile.createNewFile()) {
+                    System.out.println("New database created");
                     Logger.log("Database file created: " + dbFile.getAbsolutePath());
                 }
             } catch (Exception e) {
                 throw new Exception("Could not create database.bin: " + e.getMessage());
             }
         } else {
+            System.out.println("Database found, restarting now...");
             Logger.log("Database file already exists, skipping creation.");
         }
 

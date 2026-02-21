@@ -38,8 +38,10 @@ public class JottQL {
      * Handle shutdown procedure here
      */
     private static void shutdown() throws IOException {
+        System.out.println("Shutting down the database...");
         StorageManager storageManager = StorageManager.getStorageManager();
         storageManager.shutdown();
+        System.out.println("Database shutdown complete");
     }
 
     /**

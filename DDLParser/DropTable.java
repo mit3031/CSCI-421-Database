@@ -37,6 +37,7 @@ public class DropTable implements Command {
             Logger.log(e.getMessage());
             throw new RuntimeException(e);
         }
+        System.out.println("Table " + tableName + " dropped");
         return true;
 
     }

@@ -118,6 +118,7 @@ public class AlterTableDrop implements Command {
             throw new SQLSyntaxErrorException(e.getMessage());
         }
 
+        System.out.println("Attribute " + attributeNameToDrop + " dropped from table " + tableName + " successfully");
         return true;
     }
 }

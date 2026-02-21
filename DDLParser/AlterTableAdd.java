@@ -205,7 +205,7 @@ public class AlterTableAdd implements Command {
         }
 
 
-
+        System.out.println("Attribute " + attName + " added to table " + tableName + " successfully");
         return true;
     }
 }
