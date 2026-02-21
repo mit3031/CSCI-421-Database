@@ -26,7 +26,9 @@ public class VarCharDefinition extends AttributeDefinition {
             return false;
         }
 
+        // Strip quotes and check length
+        String content = obj.substring(1, obj.length() - 1);
         // VARCHAR(N) must be <= N characters
-        return obj.length() <= this.getMaxLength();
+        return content.length() <= this.getMaxLength();
     }
 }

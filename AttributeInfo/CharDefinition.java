@@ -26,7 +26,9 @@ public class CharDefinition extends AttributeDefinition {
             return false;
         }
 
+        // Strip quotes and check length
+        String content = obj.substring(1, obj.length() - 1);
         // CHAR(N) must be exactly N characters
-        return obj.length() == this.getMaxLength();
+        return content.length() == this.getMaxLength();
     }
 }
