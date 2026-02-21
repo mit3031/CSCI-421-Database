@@ -137,6 +137,7 @@ public class CreateTable implements Command {
             Logger.log("Create Table Error in S.M. call: " + e.getMessage());
             throw new RuntimeException(e);
         }
+        System.out.println("Table " + tableName + " created successfully!\n");
         return true;
     }
 }
