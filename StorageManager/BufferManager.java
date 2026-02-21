@@ -524,7 +524,11 @@ public class BufferManager {
             in = new DataInputStream(fis);
 
             // Read global database info first
-            catalog.setPageSize(in.readInt());
+            int pageSize = in.readInt();
+            if (pageSize != catalog.getPageSize()) {
+                System.out.println("Ignoring provided page size. Using prior size of " + pageSize);
+            }
+            catalog.setPageSize(pageSize);
             int numFree = in.readInt();
             for (int i = 0; i < numFree; i++) {
                 catalog.addFirstFreePage(in.readInt());

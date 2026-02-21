@@ -49,7 +49,8 @@ public class Catalog {
         this.catalogPath = dbPath + "/catalog.bin";
 
         // This ensures the directory exists before we try to save/load anything.
-        new File(dbPath).mkdirs();
+        File catalogFile = new File(dbPath);
+        catalogFile.mkdirs();
 
         this.pageSize = pageSize;      // Default if no file exists
         this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
@@ -58,7 +59,7 @@ public class Catalog {
     /*
     Getters and setters for page info
      */
-    public void setPageSize(int PageSize) {this.pageSize = pageSize;}
+    public void setPageSize(int pageSize) {this.pageSize = pageSize;}
 
     public int getPageSize(){
         return this.pageSize;
@@ -154,7 +155,7 @@ public class Catalog {
      */
     public void renameTable(String oldTableName, String newTableName) throws Exception {
         if(getTable(oldTableName) == null){
-            Logger.log("Table " + oldTableName + " not found");
+            System.out.println("Table " + oldTableName + " not found");
         }
         TableSchema table = getTable(oldTableName);
         table.renameTable(newTableName);
