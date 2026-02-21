@@ -1,5 +1,6 @@
 import Common.Logger;
 import DDLParser.ParserDDL;
+import DMLParser.ParserDML;
 import StorageManager.StorageManager;
 
 import java.io.IOException;
@@ -105,7 +106,15 @@ public class JottQL {
 
                 } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT")) {
                     //DML parser handles
-                    Logger.log(("Command Sent to DDL Parser"));
+                    Logger.log(("Command Sent to DML Parser"));
+                    try {
+                        ParserDML.runCommand(message);
+                    } catch (java.sql.SQLSyntaxErrorException e) {
+                        System.out.println("Syntax Error: " + e.getMessage());
+                    } catch (Exception e) {
+                        System.out.println("Error executing DML command: " + e.getMessage());
+                        if(debug) e.printStackTrace();
+                    }
                 }
                 else{ //does not match any of our cases
                     System.out.println("Unrecognized command in following input:\n" + message);
