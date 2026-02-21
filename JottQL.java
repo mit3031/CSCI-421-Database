@@ -20,6 +20,11 @@ public class JottQL {
             StorageManager.initDatabase(dbLocation, pageSize, bufferSize);
             StorageManager storageManager = StorageManager.getStorageManager();
             storageManager.bootup();
+            if(debug){
+                String[] pseudoArgs = new String[1];
+                pseudoArgs[0] = "--debug";
+                Logger.initDebug(pseudoArgs);
+            }
         } catch (Exception e) {
             System.out.println("An error occurred, could not start Database!");
             System.exit(1);
@@ -74,6 +79,10 @@ public class JottQL {
 
 
                     message += input.nextLine();
+                    if(message.equals(QUIT_MESSAGE)) {
+                        shutdown();
+                        return;
+                    }
                     if(message.contains(";")){
                         commandReady = true;
                         //trim message to end in semicolon
@@ -94,7 +103,7 @@ public class JottQL {
                     Logger.log("Command Sent to DDL Parser");
                     ParserDDL.parseCommand(message);
 
-                } else if (keywords[0].equals("SELECT")){
+                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT")) {
                     //DML parser handles
                     Logger.log(("Command Sent to DDL Parser"));
                 }

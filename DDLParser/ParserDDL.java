@@ -47,6 +47,9 @@ public class ParserDDL {
         } catch (SQLSyntaxErrorException e) {
             throw new RuntimeException(e);
         }
+        if(status){
+            Logger.log("Command parsed successfully");
+        }
         return status;
     }
 
