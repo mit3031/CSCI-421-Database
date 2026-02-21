@@ -16,6 +16,9 @@ import java.util.regex.Pattern;
 public class ParserDDL {
     public static boolean parseCommand(String command) {
         boolean status = false;
+        
+        // Normalize newlines and multiple spaces to single spaces
+        command = command.replaceAll("\\s+", " ").trim();
 
         try {
             if (command.startsWith("CREATE")) {
@@ -56,6 +59,7 @@ public class ParserDDL {
     /**
      * Function to split with respect to spaces inside quotes.
      * This is to handle default values with spaces in them for CHAR/VARCHAR values.
+     * Splits on whitespace and also separates tokens connected by commas.
      *
      * @param input String we want to split by spaces/quotes
      * @return String[] containing command
@@ -70,8 +74,8 @@ public class ParserDDL {
 
         while (matcher.find()) {
             if (matcher.group(1) != null) {
-                // If we matched the quoted part, add group 1 (excludes the quotes)
-                result.add(matcher.group(1));
+                // If we matched the quoted part, add it WITH quotes (preserve them)
+                result.add("\"" + matcher.group(1) + "\"");
             } else {
                 // Otherwise, add the unquoted word
                 result.add(matcher.group(2));
