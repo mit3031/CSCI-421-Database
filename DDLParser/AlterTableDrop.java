@@ -32,6 +32,10 @@ public class AlterTableDrop implements Command {
         String tableName = command[TABLE_NAME_INDEX].toLowerCase();
         StorageManager storageManager = StorageManager.getStorageManager();
         String attributeNameToDrop = command[ATTRIBUTE_NAME_INDEX].toLowerCase();
+        // Strip semicolon if present
+        if (attributeNameToDrop.contains(";")) {
+            attributeNameToDrop = attributeNameToDrop.substring(0, attributeNameToDrop.indexOf(";"));
+        }
 
         TableSchema originalTable = catalog.getTable(tableName);
         if (originalTable == null) {
@@ -42,10 +46,24 @@ public class AlterTableDrop implements Command {
         // Create a new list of attributes without the dropped attribute
         List<Attribute> oldAttributes = originalTable.getAttributes();
         List<Attribute> newAttributes = new ArrayList<>();
+        Attribute attributeToDrop = null;
         for (Attribute attribute : oldAttributes) {
-            if (!attribute.getName().equalsIgnoreCase(attributeNameToDrop)) {
+            if (attribute.getName().equalsIgnoreCase(attributeNameToDrop)) {
+                attributeToDrop = attribute;
+            } else {
                 newAttributes.add(attribute);
             }
+        }
+        
+        // Check if attribute exists
+        if (attributeToDrop == null) {
+            Logger.log("Attribute " + attributeNameToDrop + " not found in table " + tableName);
+            return false;
+        }
+        
+        // Check if attribute is primary key
+        if (attributeToDrop.getDefinition().getIsPrimary()) {
+            throw new SQLSyntaxErrorException("Cannot drop primary key attribute: " + attributeNameToDrop);
         }
 
         TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, newAttributes);
@@ -54,10 +72,20 @@ public class AlterTableDrop implements Command {
         try{
             storageManager.CreateTable(newTable);
             Page currPage = storageManager.selectFirstPage(tableName);
-            Integer attributeIndex = currPage.getAttributeIndex(attributeNameToDrop);
+            
+            // Find the index of the attribute to drop in the original schema
+            Integer attributeIndex = null;
+            for (int i = 0; i < oldAttributes.size(); i++) {
+                if (oldAttributes.get(i).getName().equalsIgnoreCase(attributeNameToDrop)) {
+                    attributeIndex = i;
+                    break;
+                }
+            }
+            
             if (attributeIndex == null) {
                 throw new SQLSyntaxErrorException("Attribute " + attributeNameToDrop + " not found");
             }
+            
             while(true){
                 List<List<Object>> rows = new ArrayList<>();
 
@@ -84,6 +112,15 @@ public class AlterTableDrop implements Command {
 
 
         } catch (Exception e) {
+            // Clean up temp table if it was created
+            try {
+                TableSchema tempTable = catalog.getTable(TEMP_TABLE_NAME);
+                if (tempTable != null) {
+                    storageManager.DropTable(tempTable);
+                }
+            } catch (Exception cleanupException) {
+                // Ignore cleanup errors
+            }
             throw new SQLSyntaxErrorException(e.getMessage());
         }
 
