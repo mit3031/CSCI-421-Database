@@ -63,14 +63,20 @@ public class AlterTableAdd implements Command {
         boolean notNull = false;
         //now we can get rest of info about this
         for(int i = 6; i<command.length; i++) {
-            if(command[i].contains(";")){
-                command[i] = command[i].substring(0, command[i].indexOf(";"));
+            String token = command[i];
+            if(token.contains(";")){
+                token = token.substring(0, token.indexOf(";"));
+            }
+            
+            // Skip empty tokens
+            if(token.isEmpty()) {
+                continue;
             }
 
-            if(command[i].equals("NOTNULL")) {
+            if(token.equals("NOTNULL")) {
                 notNull = true;
             }
-            else if(command[i].equals("DEFAULT")) {
+            else if(token.equals("DEFAULT")) {
                 i++;
                 if(i<command.length) {
                     defaultValue = command[i];
@@ -80,16 +86,14 @@ public class AlterTableAdd implements Command {
                 }
                 else{
                     Logger.log("Default value not found, reached end of command!");
+                    return false;
                 }
             }
-            else{
-                Logger.log("Default specified but not given value");
-            }
+            // Ignore other tokens (could be extra whitespace, etc.)
         }
 
         if(notNull && defaultValue == null){
-            System.out.println("Not null requires a default value when altering a table");
-            return false;
+            throw new SQLSyntaxErrorException("NOT NULL constraint requires a DEFAULT value when adding column to existing table");
         }
 
         //casted default value so we don't super fail
@@ -110,12 +114,26 @@ public class AlterTableAdd implements Command {
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len =  Integer.parseInt(lenStr);
             def = new CharDefinition(false, !notNull, len);
-            defCast = defaultValue;
+            // Strip quotes from CHAR default value for storage
+            if (defaultValue != null && defaultValue.length() >= 2 &&
+                ((defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) ||
+                 (defaultValue.startsWith("'") && defaultValue.endsWith("'")))) {
+                defCast = defaultValue.substring(1, defaultValue.length() - 1);
+            } else {
+                defCast = defaultValue;
+            }
         } else if (attType.startsWith("VARCHAR")){
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len = Integer.parseInt(lenStr);
-            def = new CharDefinition(false, !notNull, len);
-            defCast = defaultValue;
+            def = new VarCharDefinition(false, !notNull, len);
+            // Strip quotes from VARCHAR default value for storage
+            if (defaultValue != null && defaultValue.length() >= 2 &&
+                ((defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) ||
+                 (defaultValue.startsWith("'") && defaultValue.endsWith("'")))) {
+                defCast = defaultValue.substring(1, defaultValue.length() - 1);
+            } else {
+                defCast = defaultValue;
+            }
         } else{
             Logger.log("Unrecognized type " + attType + " for Alter Add!");
             return false;
@@ -144,7 +162,8 @@ public class AlterTableAdd implements Command {
                 List<List<Object>> newRecords = new ArrayList<>();
                 for (int i = 0; i < numRecords; i++) {
                     //get the old arrayList
-                    ArrayList<Object> rec = new ArrayList<>(List.copyOf(pg.getRecord(i)));
+                    List<Object> oldRec = pg.getRecord(i);
+                    ArrayList<Object> rec = new ArrayList<>(oldRec);
                     //append the new record w/ default value to it
                     rec.add(defCast);
 
@@ -171,7 +190,17 @@ public class AlterTableAdd implements Command {
             cat.renameTable(TEMP_TABLE_NAME, tableName);
 
         } catch (Exception e) {
-            Logger.log(e.getMessage());
+            e.printStackTrace(); // Print stack trace for debugging
+            Logger.log(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+            // Clean up temp table if it was created
+            try {
+                TableSchema tempTable = cat.getTable(TEMP_TABLE_NAME);
+                if (tempTable != null) {
+                    StorageManager.getStorageManager().DropTable(tempTable);
+                }
+            } catch (Exception cleanupException) {
+                // Ignore cleanup errors
+            }
             throw new RuntimeException(e);
         }
 
