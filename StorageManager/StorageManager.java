@@ -2,6 +2,7 @@ package StorageManager;
 
 import AttributeInfo.Attribute;
 import AttributeInfo.IntegerDefinition;
+import Common.Command;
 import Common.Page;
 import Catalog.Catalog;
 import Catalog.TableSchema;
@@ -13,6 +14,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import Common.Logger;
+import DDLParser.AlterTableDrop;
+import DDLParser.ParserDDL;
+import DMLParser.ParserDML;
 
 
 public class StorageManager {
@@ -51,11 +55,11 @@ public class StorageManager {
     public void shutdown() throws IOException {
         BufferManager bufferManager = BufferManager.getInstance();
         bufferManager.flushAllPages();
-        //bufferManager.saveToDisk();
+        bufferManager.saveToDisk();
     }
     public void bootup() {
-        //BufferManager bufferManger = BufferManager.getInstance();
-        //bufferManager.loadFromDisk();
+        BufferManager bufferManager = BufferManager.getInstance();
+        bufferManager.loadFromDisk();
     }
 
     private StorageManager(String dbPath, int pageSize, int bufferSize) throws Exception {
@@ -127,6 +131,9 @@ public class StorageManager {
     public Page selectFirstPage(String tableName) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
         Catalog catalog = Catalog.getInstance();
+        if(!catalog.tableExists(tableName)){
+            throw new Exception("Table " + tableName + " does not exist");
+        }
         Page page = bufferManager.select(catalog.getAddressOfPage(tableName), tableName);
         return page;
     }
@@ -137,9 +144,9 @@ public class StorageManager {
      * @param address Address of the table
      * @param tableName Name of the table
      * @return the page at the address
-     * @throws IOException If there is an issue reading the page
+     * @throws Exception Throws an exception if the table does not exist, or if there is an issue reading the page
      */
-    public Page select(int address, String tableName) throws IOException {
+    public Page select(int address, String tableName) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
         return bufferManager.select(address, tableName);
     }
@@ -234,6 +241,47 @@ public class StorageManager {
                 } else {
                     System.out.println("✗ FAILED: Data type mismatch");
                 }
+
+                /*
+                System.out.println("Test DDLParser:");
+                System.out.println("--------------------");
+                String command = "CREATE TABLE foo ( x INTEGER PRIMARYKEY );";
+                boolean status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status);
+                command = "CREATE TABLE myTable3 ( x1 INTEGER, x2 DOUBLE PRIMARYKEY, x3 VARCHAR(10) NOTNULL );";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status);
+                System.out.println();
+
+                command = "INSERT INTO myTable3 VALUES ( 1, 2.0, \"hi!\");";
+                ParserDML.runCommand(command);
+                String selectCommand = "SELECT * FROM myTable3;";
+                ParserDML.runCommand(selectCommand);
+
+                System.out.println("Test Alter Add");
+                command = "ALTER TABLE myTable3 ADD x14 INTEGER NOTNULL DEFAULT 15;";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status );
+                ParserDML.runCommand(selectCommand);
+                System.out.println("Test Alter Drop");
+                command = "DROP TABLE myTable3;";
+                status = ParserDDL.parseCommand(command);
+                System.out.println("Status: " + status );
+                status = cat.tableExists("myTable3");
+                System.out.println("Does table still exist? " + status);
+                */
+
+
+
+
+//                System.out.println("Test alterTableDrop");
+//                String[] commandKeywords = new String[]{"Alter", "Table", "MixedTable", "DROP", "scOre"};
+//                Command alterDrop = new AlterTableDrop();
+//                boolean status = alterDrop.run(commandKeywords);
+//                System.out.println("Staus: " + status );
+//                Page pageafterdrop = store.selectFirstPage("MixedTable");
+//                List<Attribute> attributes2 = cat.getTable("MixedTable").getAttributes();
+//                System.out.println("After drop cols: " + attributes2.get(0).getName() +", "+ attributes2.get(1).getName() + "\nFirst record " + pageafterdrop.getRecord(0).toString());
             } catch (Exception e) {
                 System.out.println("✗ FAILED: " + e.getMessage());
                 e.printStackTrace();
@@ -400,6 +448,11 @@ public class StorageManager {
                 System.out.println("\n⚠ SOME TESTS FAILED");
             }
             System.out.println("========================================\n");
+
+
+
+
+
 
         } catch (Exception e) {
             System.out.println("\n✗ CRITICAL ERROR: Test suite failed to initialize");

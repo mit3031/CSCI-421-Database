@@ -60,4 +60,8 @@ public class TableSchema {
         );
     }
 
+    public void renameTable(String newTableName) {
+        tableName = newTableName.toLowerCase();
+    }
+
 }

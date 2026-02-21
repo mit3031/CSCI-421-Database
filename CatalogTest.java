@@ -75,7 +75,7 @@ public class CatalogTest {
         }
 
         // STEP 7: Save and simulate crash
-        catalog.saveToDisk();
+        //storageManager.saveToDisk();
 
         // Reset the singleton for testing cold start
         Catalog.resetForTesting();
@@ -123,14 +123,14 @@ public class CatalogTest {
         AttributeDefinition ageDef = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false);
         Attribute ageAttr = new Attribute("age", ageDef, "18");
         alterTable.addAttribute(ageAttr);
-        alterCatalog.saveToDisk(); // Persist the change
+        //alterCatalog.saveToDisk(); // Persist the change
 
         System.out.println("SUCCESS: Attribute 'age' added to 'alterTable'");
 
         // STEP 13: Test ALTER TABLE DROP Attribute
         // Simulate: ALTER TABLE alterTable DROP id
         alterTable.dropAttribute("id");
-        alterCatalog.saveToDisk();
+        //alterCatalog.saveToDisk();
 
         if (alterTable.getAttributes().size() == 1 && alterTable.getAttributes().get(0).getName().equals("age")) {
             System.out.println("SUCCESS: Attribute 'id' dropped correctly");

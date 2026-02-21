@@ -49,12 +49,13 @@ public class Catalog {
 
         this.pageSize = pageSize;      // Default if no file exists
         this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
-        loadFromDisk();
     }
 
     /*
     Getters and setters for page info
      */
+    public void setPageSize(int PageSize) {this.pageSize = pageSize;}
+
     public int getPageSize(){
         return this.pageSize;
     }
@@ -67,18 +68,18 @@ public class Catalog {
         return this.firstFreePage.getFirst();
     }
 
+    public LinkedList<Integer> getAllFreePages() {return this.firstFreePage;}
+
     public boolean hasFreePages() {
         return !this.firstFreePage.isEmpty();
     }
 
     public void addFirstFreePage(int pageAddress) {
         this.firstFreePage.addFirst(pageAddress);
-        saveToDisk();
     }
 
     public void removeFirstFreePage() {
         this.firstFreePage.removeFirst();
-        saveToDisk();
     }
 
     /*
@@ -91,12 +92,10 @@ public class Catalog {
             throw new RuntimeException("Table already exists: " + name);
         }
         tables.put(name, table);
-        saveToDisk();
     }
 
     public void dropTable(String tableName) {
         tables.remove(tableName.toLowerCase());
-        saveToDisk();
     }
 
     public TableSchema getTable(String tableName) {
@@ -142,241 +141,14 @@ public class Catalog {
         return tables.values();
     }
 
-    public void saveToDisk() {
-        DataOutputStream out = null;
-
-        try {
-            // binary output stream to the catalog file
-            FileOutputStream fos = new FileOutputStream(catalogPath);
-            out = new DataOutputStream(fos);
-
-            // Write global database info first
-            out.writeInt(this.pageSize);
-            //Write number of freePages for reading it in
-            out.writeInt(this.firstFreePage.size());
-            for (int i = 0; i<this.firstFreePage.size(); i++) {
-                out.writeInt(this.firstFreePage.get(i));
-            }
-
-            // Writes how many tables exist in the catalog
-            out.writeInt(tables.size());
-
-            // Loops through every table in the catalog
-            for (TableSchema table : tables.values()) {
-
-                // Writes the table name
-                out.writeUTF(table.getTableName());
-
-                // Writes Page ID (location)
-                out.writeInt(table.getRootPageID());
-
-                // Get table attributes
-                List<Attribute> attrs = table.getAttributes();
-
-                // Write how many attributes this table has
-                out.writeInt(attrs.size());
-
-                // Loops through each attribute
-                for (Attribute attr : attrs) {
-
-                    // Write the attribute name
-                    out.writeUTF(attr.getName());
-
-                    // Get the attribute's definition (type + constraints)
-                    AttributeDefinition def = attr.getDefinition();
-
-                    // Write the attribute type as an integer code (helper function below)
-                    out.writeInt(getEnumCode(def.getType()));
-
-                    // Write constraints
-                    out.writeBoolean(def.getIsPrimary());
-                    out.writeBoolean(def.getIsPossibleNull());
-
-                    // Write max length
-                    if (def.getMaxLength() == null) {
-                        out.writeInt(0); // not applicable
-                    } else {
-                        out.writeInt(def.getMaxLength());
-                    }
-
-                    // Write the default value using a boolean flag
-                    if (attr.getDefaultValue() != null) {
-                        out.writeBoolean(true);           // indicates a default value exists
-                        out.writeUTF(attr.getDefaultValue()); // write the actual string
-                    } else {
-                        out.writeBoolean(false);          // no default value
-                    }
-                }
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to write catalog to disk", e);
-
-        } finally {
-            // Closes stream always
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                // Ignores close error
-            }
-        }
+    public void renameTable(String oldTableName, String newTableName) {
+        TableSchema table = getTable(oldTableName);
+        table.renameTable(newTableName);
+        tables.remove(oldTableName);
+        tables.put(newTableName.toLowerCase(), table);
     }
 
-    private void loadFromDisk() {
+    public String getCatalogPath(){ return this.catalogPath;}
 
-        // Check if catalog exists
-        File file = new File(catalogPath);
-        if (!file.exists()) {
-            // No catalog yet so fresh database
-            saveToDisk(); // since this is a new database we're good to store its metadata
-            return;
-        }
 
-        DataInputStream in = null;
-
-        try {
-            // Opens a binary input stream to read the catalog
-            FileInputStream fis = new FileInputStream(catalogPath);
-            in = new DataInputStream(fis);
-
-            // Read global database info first
-            this.pageSize = in.readInt();
-            int numFree = in.readInt();
-            for (int i = 0; i < numFree; i++) {
-                this.firstFreePage.addFirst(in.readInt());
-            }
-
-            // Read how many tables are stored
-            int numTables = in.readInt();
-
-            // Loop through each table
-            for (int i = 0; i < numTables; i++) {
-
-                // Read table name
-                String tableName = in.readUTF();
-
-                // Read Page ID (location)
-                int rootPageID = in.readInt();
-
-                // Read how many attributes this table has
-                int numAttrs = in.readInt();
-
-                // Temporary list to store attributes
-                List<Attribute> attrs = new ArrayList<>();
-
-                // Loop through each attribute
-                for (int j = 0; j < numAttrs; j++) {
-
-                    // Read attribute name
-                    String attrName = in.readUTF();
-
-                    // Read and convert the type code back to an enum (helper function below)
-                    int typeCode = in.readInt();
-                    AttributeTypeEnum type = getEnumFromCode(typeCode);
-
-                    // Read constraints
-                    boolean isPrimary = in.readBoolean();
-                    boolean isNullable = in.readBoolean();
-
-                    // Read max length
-                    int rawMaxLen = in.readInt();
-                    Integer maxLen;
-                    if (rawMaxLen == 0) {
-                        maxLen = null;
-                    } else {
-                        maxLen = rawMaxLen;
-                    }
-
-                    // Read default value using boolean flag
-                    boolean hasDefault = in.readBoolean();
-                    String defaultValue;
-                    if (hasDefault) {
-                        defaultValue = in.readUTF(); // read the actual value
-                    } else {
-                        defaultValue = null;         // no default
-                    }
-
-                    // Create the AttributeDefinition
-                    AttributeDefinition def;
-
-                    if (type == AttributeTypeEnum.INTEGER) {
-                        def = new IntegerDefinition(AttributeTypeEnum.INTEGER, isPrimary, isNullable);
-
-                    } else if (type == AttributeTypeEnum.DOUBLE) {
-                        def = new DoubleDefinition(isPrimary, isNullable);
-
-                    } else if (type == AttributeTypeEnum.BOOLEAN) {
-                        def = new BooleanDefinition(isPrimary, isNullable);
-
-                    } else if (type == AttributeTypeEnum.CHAR) {
-                        // chars use the maxLen we read from the disk
-                        def = new CharDefinition(isPrimary, isNullable, maxLen);
-
-                    } else if (type == AttributeTypeEnum.VARCHAR) {
-                        // varchars also uses the maxLen
-                        def = new VarCharDefinition(isPrimary, isNullable, maxLen);
-
-                    } else {
-                        // This should only happen if the file is corrupted or a new type was added
-                        throw new RuntimeException("Unknown attribute type code found in catalog file.");
-                    }
-
-                    // Creates Attribute object and add it to the list
-                    Attribute attr = new Attribute(attrName, def, defaultValue);
-                    attrs.add(attr);
-                }
-
-                // Rebuilds the table schema and add it to the catalog
-                TableSchema schema = new TableSchema(tableName, attrs, rootPageID);
-                tables.put(tableName.toLowerCase(), schema);
-            }
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load catalog from disk", e);
-
-        } finally {
-            // Closes the stream always
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException e) {
-                //Ignoring close errors
-            }
-        }
-    }
-
-    // Apparently storing ENUMS directly in our binary storage isn't the best idea
-    // It takes extra space so we tie it to in integer value
-    // Also better for binary persistence
-
-    /*
-    Helper function for saving stuff to the binary database (just converts enums -> integers)
-     */
-    private int getEnumCode(AttributeTypeEnum type) {
-        switch (type) {
-            case INTEGER: return 1;
-            case DOUBLE:  return 2;
-            case BOOLEAN: return 3;
-            case CHAR:    return 4;
-            case VARCHAR: return 5;
-            default: throw new RuntimeException("Unknown type");
-        }
-    }
-
-    /*
-    Helper function for loading stuff from the binary database (just converts integers -> back to ENUMS)
-     */
-    private AttributeTypeEnum getEnumFromCode(int code) {
-        switch (code) {
-            case 1: return AttributeTypeEnum.INTEGER;
-            case 2: return AttributeTypeEnum.DOUBLE;
-            case 3: return AttributeTypeEnum.BOOLEAN;
-            case 4: return AttributeTypeEnum.CHAR;
-            case 5: return AttributeTypeEnum.VARCHAR;
-            default: throw new RuntimeException("Invalid type code");
-        }
-    }
 }
