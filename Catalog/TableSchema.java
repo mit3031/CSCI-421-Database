@@ -60,6 +60,20 @@ public class TableSchema {
         );
     }
 
+    /**
+     * Returns the index of an attribute
+     * @param attrName the name of the attribute
+     * @return the index of the attribute or null if the attribute doesn't exist
+     */
+    public Integer getAttributeIndex(String attrName) {
+        for (int i = 0; i < attributes.size(); i++) {
+            if (attributes.get(i).getName().equalsIgnoreCase(attrName)) {
+                return i;
+            }
+        }
+        return null;
+    }
+
     public void renameTable(String newTableName) {
         tableName = newTableName.toLowerCase();
     }

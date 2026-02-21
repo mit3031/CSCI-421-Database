@@ -1,6 +1,10 @@
 package Catalog;
 
 import AttributeInfo.*;
+import Common.Logger;
+import Common.Page;
+import StorageManager.StorageManager;
+
 import java.io.*;
 import java.util.*;
 
@@ -141,11 +145,34 @@ public class Catalog {
         return tables.values();
     }
 
-    public void renameTable(String oldTableName, String newTableName) {
+    /**
+     * Renames a table, first renames the table schema, removes the old table, checks to ensure name
+     * in all the pages is the new table name
+     * @param oldTableName the old table name
+     * @param newTableName the new name of the table
+     * @throws Exception if there is an io exception in reading the pages or the table doesn't exist
+     */
+    public void renameTable(String oldTableName, String newTableName) throws Exception {
+        if(getTable(oldTableName) == null){
+            Logger.log("Table " + oldTableName + " not found");
+        }
         TableSchema table = getTable(oldTableName);
         table.renameTable(newTableName);
         tables.remove(oldTableName);
         tables.put(newTableName.toLowerCase(), table);
+        StorageManager storageManager = StorageManager.getStorageManager();
+        Page currPage = storageManager.selectFirstPage(newTableName);
+        while(true){
+            if (!currPage.getTableName().equalsIgnoreCase(newTableName)){
+                currPage.setTableName(newTableName);
+            }
+            if(currPage.getNextPage() != -1){
+                currPage = storageManager.select(currPage.getNextPage(), newTableName);
+            } else {
+                break;
+            }
+        }
+
     }
 
     public String getCatalogPath(){ return this.catalogPath;}

@@ -74,13 +74,7 @@ public class AlterTableDrop implements Command {
             Page currPage = storageManager.selectFirstPage(tableName);
             
             // Find the index of the attribute to drop in the original schema
-            Integer attributeIndex = null;
-            for (int i = 0; i < oldAttributes.size(); i++) {
-                if (oldAttributes.get(i).getName().equalsIgnoreCase(attributeNameToDrop)) {
-                    attributeIndex = i;
-                    break;
-                }
-            }
+            Integer attributeIndex = originalTable.getAttributeIndex(attributeNameToDrop);
             
             if (attributeIndex == null) {
                 throw new SQLSyntaxErrorException("Attribute " + attributeNameToDrop + " not found");
