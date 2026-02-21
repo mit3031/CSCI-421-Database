@@ -31,7 +31,7 @@ public class CreateTable implements Command {
 
         int index = 4;
         //keep parsing until out of stuff
-        while(index<command.length && !command[index].contains(";")){
+        while(index<command.length && !command[index].contains(";") && !command[index].equals(")")){
             try {
                 String attrName = null;
                 AttributeTypeEnum type = null;
