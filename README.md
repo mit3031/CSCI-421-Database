@@ -110,12 +110,32 @@ java JottQL myDatabase 4096 10 false true
 
 ---
 
+## Using the Database
+
+After launching the program, commands are entered through standard input
+
+All commands:
+- May span multiple lines
+- Must end with a semicolon (`;`), except for ```<QUIT>```
+- Keywords must match required capitalization
+
+Example:
+
+```
+CREATE TABLE myTable ( x INTEGER PRIMARYKEY );
+INSERT myTable VALUES ( 1, 2, 3 );
+SELECT * FROM myTable;
+<QUIT>;
+```
+
+---
+
 ## Shutting Down the Database
 
 To properly shut down the database, enter:
 
 ```
-<QUIT>;
+<QUIT>
 ```
 
 This ensures:
