@@ -101,35 +101,74 @@ public class Insert implements Command {
 
     /**
      * Parses the VALUES clause to extract individual rows
-     * Handles: (val1, val2), (val3, val4), ...
+     * JottQL syntax: VALUES ( val1, val2, val3 )
+     * - Commas separate ROWS (tuples)
+     * - Spaces separate COLUMNS within a row
      */
     private List<List<String>> parseRows(String valuesString) throws SQLSyntaxErrorException {
         List<List<String>> rows = new ArrayList<>();
         
-        // Remove outer whitespace
+        // Remove outer whitespace and parentheses
         valuesString = valuesString.trim();
-
-        StringBuilder str = new StringBuilder(valuesString);
-        str.deleteCharAt(0);
-        str.deleteCharAt(str.length()-1);
-        String [] row = str.toString().split(",");
-        for (int i = 0; i < row.length; i++) {
-            List<String> temp = new ArrayList<String>();
-            temp = Arrays.asList(row[i].split(" "));
-            List<String> column = new ArrayList<String>();
-            for(int j = 0; j < temp.size(); j++){
-                if (temp.get(j) != "") {
-                    column.add(temp.get(j));
-                }
-            }
-            rows.add(column);
+        if (valuesString.startsWith("(") && valuesString.endsWith(")")) {
+            valuesString = valuesString.substring(1, valuesString.length() - 1);
         }
+        
+        // Split by commas (but not inside quotes) to get individual rows
+        List<String> rowStrings = splitByComma(valuesString);
+        
+        for (String rowString : rowStrings) {
+            rows.add(parseRowValues(rowString.trim()));
+        }
+        
+        if (rows.isEmpty()) {
+            throw new SQLSyntaxErrorException("No rows found in VALUES clause");
+        }
+        
         return rows;
+    }
+    
+    /**
+     * Splits a string by commas, but not commas inside quotes
+     */
+    private List<String> splitByComma(String input) {
+        List<String> result = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        char quoteChar = '\0';
+        
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            
+            if (!inQuotes && (c == '"' || c == '\'')) {
+                inQuotes = true;
+                quoteChar = c;
+                current.append(c);
+            } else if (inQuotes && c == quoteChar) {
+                inQuotes = false;
+                current.append(c);
+            } else if (!inQuotes && c == ',') {
+                // Comma outside quotes - split here
+                if (current.length() > 0) {
+                    result.add(current.toString());
+                    current = new StringBuilder();
+                }
+            } else {
+                current.append(c);
+            }
+        }
+        
+        // Add last value
+        if (current.length() > 0) {
+            result.add(current.toString());
+        }
+        
+        return result;
     }
 
     /**
-     * Parses individual values within a row
-     * Handles: val1, val2, val3, ...
+     * Parses individual column values within a row
+     * Spaces separate columns: val1 val2 val3
      * Preserves quotes around string values
      */
     private List<String> parseRowValues(String rowString) throws SQLSyntaxErrorException {
@@ -152,18 +191,24 @@ public class Insert implements Command {
                 // End of quoted string - include the closing quote
                 inQuotes = false;
                 current.append(c);
-            } else if (!inQuotes && c == ',') {
-                // End of current value
-                values.add(current.toString().trim());
-                current = new StringBuilder();
+            } else if (!inQuotes && Character.isWhitespace(c)) {
+                // Space outside quotes - end of current value
+                if (current.length() > 0) {
+                    values.add(current.toString().trim());
+                    current = new StringBuilder();
+                }
             } else {
                 current.append(c);
             }
         }
         
         // Add last value
-        if (current.length() > 0 || rowString.endsWith(",")) {
+        if (current.length() > 0) {
             values.add(current.toString().trim());
+        }
+        
+        if (values.isEmpty()) {
+            throw new SQLSyntaxErrorException("Empty row in VALUES clause");
         }
         
         return values;
