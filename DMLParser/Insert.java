@@ -9,37 +9,34 @@ import AttributeInfo.Attribute;
 import AttributeInfo.AttributeDefinition;
 import AttributeInfo.AttributeTypeEnum;
 
+import java.sql.Array;
 import java.sql.SQLSyntaxErrorException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Insert implements Command {
 
-    // INSERT INTO <tableName> VALUES ( <row1> ), ( <row2> ), ... ;
+    // INSERT <tableName> VALUES ( <row1> ), ( <row2> ), ... ;
     // Each row contains comma-separated values
-    // Example: INSERT INTO Student VALUES (1, "John Doe", 3.5), (2, "Jane Smith", 3.8);
+    // Example: INSERT Student VALUES (1, "John Doe", 3.5), (2, "Jane Smith", 3.8);
 
-    private final String VALID_SYNTAX = "INSERT INTO <table> VALUES ( <val1>, <val2>, ... ), ( ... );";
+    private final String VALID_SYNTAX = "INSERT <table> VALUES ( <val1>, <val2>, ... ), ( ... );";
 
     @Override
     public boolean run(String[] command) throws SQLSyntaxErrorException {
 
-        // check if there is at least 5 elements: INSERT INTO <table> VALUES <values_clause>
-        if (command.length < 5){
+        // check if there is at least 5 elements: INSERT <table> VALUES <values_clause>
+        if (command.length < 4){
             throw new SQLSyntaxErrorException("Invalid Syntax: " + this.VALID_SYNTAX);
         }
 
-        // check if INSERT INTO <table> and VALUES are accounted for
+        // check if INSERT <table> and VALUES are accounted for
         if (!command[0].equalsIgnoreCase("INSERT") || 
-            !command[1].equalsIgnoreCase("INTO") || 
-            !command[3].equalsIgnoreCase("VALUES")){
+            !command[2].equalsIgnoreCase("VALUES")){
             throw new SQLSyntaxErrorException("Invalid Syntax: " + this.VALID_SYNTAX);
         }
 
         // Get table name (preserve case from user, but convert to lowercase for lookups)
-        String tableName = command[2].toLowerCase();
+        String tableName = command[1].toLowerCase();
         
         // Check if table exists
         Catalog catalog = Catalog.getInstance();
@@ -53,7 +50,7 @@ public class Insert implements Command {
         int numAttributes = attributes.size();
 
         // Parse the VALUES clause - it's in command[4] as a single string
-        String valuesString = command[4].trim();
+        String valuesString = command[3].trim();
 
         // Parse rows - split by "),(" pattern
         List<List<String>> parsedRows = parseRows(valuesString);
@@ -111,43 +108,22 @@ public class Insert implements Command {
         
         // Remove outer whitespace
         valuesString = valuesString.trim();
-        
-        // Track parentheses depth
-        int depth = 0;
-        StringBuilder currentRow = new StringBuilder();
-        
-        for (int i = 0; i < valuesString.length(); i++) {
-            char c = valuesString.charAt(i);
-            
-            if (c == '(') {
-                depth++;
-                if (depth == 1) {
-                    // Start of a new row
-                    currentRow = new StringBuilder();
-                } else {
-                    currentRow.append(c);
+
+        StringBuilder str = new StringBuilder(valuesString);
+        str.deleteCharAt(0);
+        str.deleteCharAt(str.length()-1);
+        String [] row = str.toString().split(",");
+        for (int i = 0; i < row.length; i++) {
+            List<String> temp = new ArrayList<String>();
+            temp = Arrays.asList(row[i].split(" "));
+            List<String> column = new ArrayList<String>();
+            for(int j = 0; j < temp.size(); j++){
+                if (temp.get(j) != "") {
+                    column.add(temp.get(j));
                 }
-            } else if (c == ')') {
-                depth--;
-                if (depth == 0) {
-                    // End of current row
-                    rows.add(parseRowValues(currentRow.toString()));
-                } else {
-                    currentRow.append(c);
-                }
-            } else if (depth > 0) {
-                currentRow.append(c);
             }
+            rows.add(column);
         }
-        
-        if (depth != 0) {
-            throw new SQLSyntaxErrorException("Mismatched parentheses in VALUES clause");
-        }
-        
-        if (rows.isEmpty()) {
-            throw new SQLSyntaxErrorException("No rows found in VALUES clause");
-        }
-        
         return rows;
     }
 

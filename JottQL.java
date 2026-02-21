@@ -1,5 +1,6 @@
 import Common.Logger;
 import DDLParser.ParserDDL;
+import DMLParser.ParserDML;
 import StorageManager.StorageManager;
 
 import java.io.IOException;
@@ -106,6 +107,7 @@ public class JottQL {
                 } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT")) {
                     //DML parser handles
                     Logger.log(("Command Sent to DDL Parser"));
+                    ParserDML.runCommand(message);
                 }
                 else{ //does not match any of our cases
                     System.out.println("Unrecognized command in following input:\n" + message);
@@ -113,6 +115,7 @@ public class JottQL {
 
                 }
                 catch(Exception e){
+
                     //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
                 }
 
