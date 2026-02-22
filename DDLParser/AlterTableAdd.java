@@ -37,7 +37,7 @@ public class AlterTableAdd implements Command {
         //we do not have table
         if(tableSchema == null) {
             Logger.log("Table " + tableName + " not found from Catalog!");
-            return false;
+            throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
         }
 
         String attName = command[NEW_ATT_NAME_INDEX];
