@@ -84,6 +84,9 @@ public class Insert implements Command {
             typedRows.add(typedRow);
         }
 
+        // Track how many rows actually succeed
+        int successCount = 0;
+
         // Insert rows one by one and check PK per row
         try {
             StorageManager store = StorageManager.getStorageManager();
@@ -97,16 +100,29 @@ public class Insert implements Command {
 
                 // Insert the row
                 store.insertSingleRow(tableName, row);
+
+                // Increment only after a successful insert
+                successCount++;
             }
 
             System.out.println("Successfully inserted " + typedRows.size() + " row(s) into " + tableName);
 
         } catch (Exception e) {
-            throw new SQLSyntaxErrorException("Error inserting data: " + e.getMessage());
+            // Print the error message as requested in the sample
+            System.out.println("Error: " + e.getMessage());
+
+            // Report partial success count if any rows were inserted before the error
+            if (successCount > 0) {
+                System.out.println(successCount + " row(s) inserted successfully");
+            }
+
+            // Return false to indicate the command didnt complete fully
+            return false;
         }
 
         return true;
     }
+
     /**
      * Parses the VALUES clause to extract individual rows
      * JottQL syntax: VALUES ( val1, val2, val3 )
