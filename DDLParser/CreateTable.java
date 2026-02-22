@@ -34,7 +34,7 @@ public class CreateTable implements Command {
         int closeParen = fullCommand.lastIndexOf(")"); // Use lastIndexOf to get the actual closing paren
         
         if (openParen == -1 || closeParen == -1) {
-            System.out.println("Missing aprenthesis, invalid command!");
+            System.out.println("Missing parenthesis, invalid command!");
             return false;
             //throw new SQLSyntaxErrorException("Missing parentheses in CREATE TABLE statement");
         }
@@ -136,6 +136,7 @@ public class CreateTable implements Command {
             Logger.log("CREATE Syntax Error: Primary Key Count is: " + pKeyCount + ". Expected 0 or 1");
             return false;
         }
+        
         TableSchema table = new TableSchema(tableName, attributes);
 
         //TODO do the storage manager call and see result, return based on that
@@ -144,6 +145,11 @@ public class CreateTable implements Command {
             sm.CreateTable(table);
         } catch (Exception e) {
             Logger.log("Create Table Error in S.M. call: " + e.getMessage());
+
+            if (e.getMessage().contains("Table already exists")){
+                System.out.println(e.getMessage());
+            }
+
             throw new RuntimeException(e);
         }
         Logger.log("Command parsed successfully");
