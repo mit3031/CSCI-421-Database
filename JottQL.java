@@ -82,7 +82,7 @@ public class JottQL {
                 while(!commandReady) {
 
 
-                    message += input.nextLine();
+                    message += input.nextLine() + " ";
                     if(message.equals(QUIT_MESSAGE)) {
                         shutdown();
                         return;
