@@ -147,6 +147,7 @@ public class CreateTable implements Command {
             throw new RuntimeException(e);
         }
         Logger.log("Command parsed successfully");
+        System.out.println("Table " + tableName + " created successfully!\n");
         return true;
     }
     
