@@ -34,7 +34,9 @@ public class CreateTable implements Command {
         int closeParen = fullCommand.lastIndexOf(")"); // Use lastIndexOf to get the actual closing paren
         
         if (openParen == -1 || closeParen == -1) {
-            throw new SQLSyntaxErrorException("Missing parentheses in CREATE TABLE statement");
+            System.out.println("Missing aprenthesis, invalid command!");
+            return false;
+            //throw new SQLSyntaxErrorException("Missing parentheses in CREATE TABLE statement");
         }
         
         String attributeSection = fullCommand.substring(openParen + 1, closeParen).trim();
@@ -103,7 +105,9 @@ public class CreateTable implements Command {
                     definition = null;
                 }
                 if(attrName == null){
-                    throw new SQLSyntaxErrorException("Attribute does not have name!");
+                    System.out.println("Missing attribute name!");
+                    return false;
+                    //throw new SQLSyntaxErrorException("Attribute does not have name!");
                 }
 
                 attributes.add(new Attribute(attrName, definition, null));
@@ -111,11 +115,15 @@ public class CreateTable implements Command {
             }
             catch (IndexOutOfBoundsException e){
                 Logger.log("CREATE Syntax Error: Out of bounds parsing attribute definitions");
-                throw new SQLSyntaxErrorException("attribute definitions could not be parsed!");
+                System.out.println("Error parsing attribute definitions, check your syntax and try again.");
+                return false;
+                //throw new SQLSyntaxErrorException("attribute definitions could not be parsed!");
             }
             catch (Exception e){
                 Logger.log("CREATE Error: " + e.getMessage());
-                throw new SQLSyntaxErrorException("attribute definitions could not be parsed!");
+                System.out.println("Error parsing attribute definitions");
+                return false;
+                //throw new SQLSyntaxErrorException("attribute definitions could not be parsed!");
             }
         }
 
@@ -123,7 +131,6 @@ public class CreateTable implements Command {
         
         
         //TODO check no attributes with same name
-        //what do for not null? figure that out, not for this yet?
 
         if(pKeyCount > 1){
             Logger.log("CREATE Syntax Error: Primary Key Count is: " + pKeyCount + ". Expected 0 or 1");

@@ -37,7 +37,8 @@ public class AlterTableAdd implements Command {
         //we do not have table
         if(tableSchema == null) {
             Logger.log("Table " + tableName + " not found from Catalog!");
-            throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
+            System.out.println("Table " + tableName + " does not exist!");
+            return false;
         }
 
         String attName = command[NEW_ATT_NAME_INDEX];
@@ -97,7 +98,8 @@ public class AlterTableAdd implements Command {
         }
 
         if(notNull && defaultValue == null){
-            throw new SQLSyntaxErrorException("NOT NULL constraint requires a DEFAULT value when adding column to existing table");
+            System.out.println("NOT NULL constraint requires a DEFAULT value when adding column to existing table");
+            return false;
         }
 
         //casted default value so we don't super fail

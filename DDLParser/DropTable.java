@@ -16,7 +16,9 @@ public class DropTable implements Command {
     public boolean run(String[] command) throws SQLSyntaxErrorException {
         if(command.length != 3){
             Logger.log("Expected 3 words in Drop Table, got " + command.length);
-            throw new SQLSyntaxErrorException("Incorrect amount of words given for Dropping table!");
+            System.out.println("Invalid Drop Table Command");
+            return false;
+            //throw new SQLSyntaxErrorException("Incorrect amount of words given for Dropping table!");
         }
         String tableName = command[2].toLowerCase();
         tableName = tableName.substring(0, tableName.indexOf(";"));
