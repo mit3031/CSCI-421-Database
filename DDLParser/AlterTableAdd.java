@@ -139,6 +139,7 @@ public class AlterTableAdd implements Command {
                 defCast = defaultValue;
             }
         } else{
+            System.out.println("Unrecognized type " + attType + " for Alter Add!");
             Logger.log("Unrecognized type " + attType + " for Alter Add!");
             return false;
         }
