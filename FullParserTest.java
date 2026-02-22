@@ -189,8 +189,14 @@ public class FullParserTest {
             totalTests++;
             testSubHeader("Test 3.3: ADD NOT NULL without DEFAULT (should fail)");
             try {
-                ParserDDL.parseCommand("ALTER TABLE table1 ADD str2 VARCHAR(10) NOTNULL ;");
-                System.out.println("✗ FAILED: Should require DEFAULT with NOT NULL");
+                boolean result = ParserDDL.parseCommand("ALTER TABLE table1 ADD str2 VARCHAR(10) NOTNULL ;");
+                if (!result){
+                    System.out.println("✓ PASSED: Correctly rejected");
+                    ParserDML.runCommand("SELECT * FROM table1;");
+                    passedTests++;
+                }else{
+                    System.out.println("✗ FAILED: Should require DEFAULT with NOT NULL");
+                }
             } catch (Exception e) {
                 System.out.println("✓ PASSED: Correctly rejected - " + e.getMessage());
                 ParserDML.runCommand("SELECT * FROM table1;");
@@ -200,8 +206,13 @@ public class FullParserTest {
             totalTests++;
             testSubHeader("Test 3.4: DROP primary key column (should fail)");
             try {
-                ParserDDL.parseCommand("ALTER TABLE table1 DROP x;");
-                System.out.println("✗ FAILED: Should not allow dropping primary key");
+                boolean result = ParserDDL.parseCommand("ALTER TABLE table1 DROP x;");
+                if (!result){
+                    System.out.println("✓ PASSED: Correctly rejected");
+                    passedTests++;
+                }else{
+                    System.out.println("✗ FAILED: Should not allow dropping primary key");
+                }
             } catch (Exception e) {
                 System.out.println("✓ PASSED: Correctly rejected - " + e.getMessage());
                 passedTests++;

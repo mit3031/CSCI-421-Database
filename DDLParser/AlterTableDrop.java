@@ -39,6 +39,7 @@ public class AlterTableDrop implements Command {
 
         TableSchema originalTable = catalog.getTable(tableName);
         if (originalTable == null) {
+            System.out.println("Table " + tableName + " does not exist!");
             Logger.log("Table " + tableName + " not found");
             return false;
         }
@@ -57,13 +58,16 @@ public class AlterTableDrop implements Command {
         
         // Check if attribute exists
         if (attributeToDrop == null) {
+            System.out.println("Attribute " + attributeNameToDrop + " does not exist in table " + tableName);
             Logger.log("Attribute " + attributeNameToDrop + " not found in table " + tableName);
             return false;
         }
         
         // Check if attribute is primary key
         if (attributeToDrop.getDefinition().getIsPrimary()) {
-            throw new SQLSyntaxErrorException("Cannot drop primary key attribute: " + attributeNameToDrop);
+            System.out.println("Attribute " + attributeNameToDrop + " is primary, cannot drop!");
+            //throw new SQLSyntaxErrorException("Cannot drop primary key attribute: " + attributeNameToDrop);
+            return false;
         }
 
         TableSchema newTable = new TableSchema(TEMP_TABLE_NAME, newAttributes);
@@ -77,7 +81,9 @@ public class AlterTableDrop implements Command {
             Integer attributeIndex = originalTable.getAttributeIndex(attributeNameToDrop);
             
             if (attributeIndex == null) {
-                throw new SQLSyntaxErrorException("Attribute " + attributeNameToDrop + " not found");
+                System.out.println("Attribute " + attributeNameToDrop + " does not exist in table " + tableName);
+                return false;
+                //throw new SQLSyntaxErrorException("Attribute " + attributeNameToDrop + " not found");
             }
             
             while(true){

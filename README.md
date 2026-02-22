@@ -37,16 +37,7 @@ If multiple Java versions are installed on the CS machine, load Java 21:
 module load java/21
 ```
 
----
 
-## Cloning the Repository
-
-```bash
-git clone https://github.com/mit3031/CSCI-421-Database.git
-cd CSCI-421-Database
-```
-
----
 
 ## Building the Project (Compilation)
 

@@ -27,6 +27,8 @@ public class AlterTableAdd implements Command {
     public boolean run(String[] command) throws SQLSyntaxErrorException {
         if(command.length <MIN_QUERY_LEN) {
             Logger.log("Command too short for Alter Table Drop! Min. Len " +  MIN_QUERY_LEN + " Got " + command.length);
+            System.out.println("Command too short!");
+            return false;
         }
 
         String tableName =  command[TABLE_NAME_INDEX].toLowerCase();
@@ -35,6 +37,7 @@ public class AlterTableAdd implements Command {
         //we do not have table
         if(tableSchema == null) {
             Logger.log("Table " + tableName + " not found from Catalog!");
+            System.out.println("Table " + tableName + " does not exist!");
             return false;
         }
 
@@ -48,6 +51,7 @@ public class AlterTableAdd implements Command {
         //convert attribute name to lowercase and check if alphanumeric
         attName = attName.toLowerCase();
         if (!attName.matches("^[a-zA-Z0-9]+$")) {
+            System.out.println("Attribute name " + attName + " is invalid!");
             Logger.log("Invalid attribute name " + attName);
             return false;
         }
@@ -55,6 +59,7 @@ public class AlterTableAdd implements Command {
         //check that attribute does not already exist for this table
         for(Attribute att : tableSchema.getAttributes()) {
             if(att.getName().equals(attName)) {
+                System.out.println(att.getName() + " is already in table!");
                 Logger.log("Alter table attribute " + attName + " already exists!");
                 return false;
             }
@@ -93,7 +98,8 @@ public class AlterTableAdd implements Command {
         }
 
         if(notNull && defaultValue == null){
-            throw new SQLSyntaxErrorException("NOT NULL constraint requires a DEFAULT value when adding column to existing table");
+            System.out.println("NOT NULL constraint requires a DEFAULT value when adding column to existing table");
+            return false;
         }
 
         //casted default value so we don't super fail
@@ -135,6 +141,7 @@ public class AlterTableAdd implements Command {
                 defCast = defaultValue;
             }
         } else{
+            System.out.println("Unrecognized type " + attType + " for Alter Add!");
             Logger.log("Unrecognized type " + attType + " for Alter Add!");
             return false;
         }

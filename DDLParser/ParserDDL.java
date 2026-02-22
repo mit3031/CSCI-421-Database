@@ -51,6 +51,7 @@ public class ParserDDL {
             throw new RuntimeException(e);
         }
         if(status){
+            System.out.println("Command executed successfully!");
             Logger.log("Command parsed successfully");
         }
         return status;
