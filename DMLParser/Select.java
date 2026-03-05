@@ -56,14 +56,14 @@ public class Select implements Command{
         return str.substring(startIndex, endIndex);
     }
 
-    private String parseFrom(String fromPieces) throws SQLSyntaxErrorException{
-        List<String> fromSplit = Arrays.stream(fromPieces.split(",")).map(String::trim).collect(Collectors.toList());
+    private String parseProjection(String fromPieces) throws SQLSyntaxErrorException{
+        List<String> projectionSplit = Arrays.stream(fromPieces.split(",")).map(String::trim).collect(Collectors.toList());
 
-        Logger.log("Tables Detected: " + fromSplit);
+        Logger.log("Tables Detected: " + projectionSplit);
 
-        // go through each table and check that they exists
-        for (int i = 0; i < fromSplit.size(); i++){
-            String table = fromSplit.get(i);
+        // go through each attribute and check that they exists
+        for (int i = 0; i < projectionSplit.size(); i++){
+            String table = projectionSplit.get(i);
             Catalog catalog = Catalog.getInstance();
             
             if (!catalog.tableExists(table)){
@@ -85,11 +85,57 @@ public class Select implements Command{
         String originalCommand = sb.toString();
         Logger.log("Original command is: " + originalCommand);
 
-        // FROM SECTION
-        String fromSection = this.extractMiddleSection(originalCommand, "SELECT ", " FROM");
-        Logger.log("From section: " + fromSection);   
+        // Assumes that the user input everything correct
 
-        String fromTableName = this.parseFrom(fromSection);
+        // // FROM SECTION
+        // String fromSection = this.extractMiddleSection(originalCommand, "SELECT ", " FROM");
+        // Logger.log("From section: " + fromSection);   
+
+        // String fromTableName = this.parseFrom(fromSection);
+
+        // FROM SECTION
+        // check if WHERE exists if so extract everything between FROM...WHERE
+
+        // else if ordering by exists if so extract everything between FROM...ORDERING
+
+        // otherwise, extract everything between FROM...(end)
+
+        // run the fromParse(from section) --> gets new table name
+        // ^ checks if the above tables exists and if so, gets the cartesian product 
+        // ^ mental note, if from is taking from one table, DO NOT DELETE THE TABLE AT THE END
+
+        // WHERE SECTION (if WHERE exists)
+
+        // check if ordering by exists and if so extract WHERE...ORDERING
+
+        // else extract everything from WHERE...(end)
+
+        // run the whereParse(section, tableName) --> gets new table name
+        // ^ builds the parse tree and runs the where clause
+
+        // ORDERING BY SECTION (if ordering by exists)
+
+        // extract everything between ORDERING BY...(end)
+
+        // run orderingParse(section, tableName) --> gets new table name
+        // ^ orders element by primary key
+
+        // SELECT section
+
+        // grab everything between SELECT...FROM
+
+        // if * simply run the normal select on the table
+            // if * do not delete temp table
+
+        // otherwise, create a temp table and run select on that
+
+
+        // Mental NOTE, should be deleting the tables once we are done with them
+        // there no way to get around deleting the select table until after the select is done but 
+        // other than that, we should be good.  
+        
+        
+
     
         return true;
     }
