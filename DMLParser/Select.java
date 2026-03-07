@@ -46,15 +46,59 @@ parseSelect(String[] command):
 
 public class Select implements Command{
 
-    private String extractMiddleSection(String str, String start, String end){
+    /**
+     * Constant string used to indicate that this table is not new and thus should not be deleted
+     * For example, if I run SELECT * FROM t1; theres no projection and no cartesian product is made, thus neither will result in an 
+     * extra table that has to be deleted. To avoid any chance of collisions in strings, a random one was made. 
+     */
+    private static final String NONEWTABLE = "osnoiqnwdoiwqndoqiuiubibiubnd"; 
+        
+    /**
+     * Extracts everything between "start ... end" of a string
+     * @param str the string being extracted from
+     * @param start the element we begin extracting from
+     * @param end the end element (if blank, defaults to end of the string)
+     * @param trimExtraction boolean indicating whether to trim the string or not
+     * @return the extracted string (the ... in start...end)
+     */
+    private String extractMiddleSection(String str, String start, String end, boolean trimExtraction){
         // 1. Find the index of the start string and add its length
         int startIndex = str.indexOf(start) + start.length();
         
         // 2. Find the index of the end string
-        int endIndex = str.indexOf(end);
+        int endIndex = str.length() - 1;
+        if (!end.equals("")){
+            endIndex = str.indexOf(end);
+        }
+
+        if (trimExtraction){
+            return str.substring(startIndex, endIndex).trim();
+        }
 
         return str.substring(startIndex, endIndex);
     }
+
+    /**
+     * Extracts everything between "start ... end" of a string
+     * @param str the string being extracted from
+     * @param start the element we begin extracting from
+     * @param end the end element (if blank, defaults to end of the string)
+     * @return the extracted string (the ... in start...end)
+     */
+    private String extractMiddleSection(String str, String start, String end){
+        return this.extractMiddleSection(str, start, end, false); 
+    }
+
+    /**
+     * Checks if a string is present within some string
+     * @param str the original string
+     * @param strCheck the string being checked for
+     * @return true if the string is present, false otherwise
+     */
+    private boolean stringExists(String str, String strCheck){
+        return str.indexOf(strCheck) != -1; 
+    }
+    
 
     private String parseProjection(String fromPieces) throws SQLSyntaxErrorException{
         List<String> projectionSplit = Arrays.stream(fromPieces.split(",")).map(String::trim).collect(Collectors.toList());
@@ -77,6 +121,18 @@ public class Select implements Command{
         return "this is the new table name"; 
     }
 
+    private String fromParse(String fromSection){
+        return Select.NONEWTABLE; 
+    }
+
+    private String whereParse(String whereSection, String tempTableName){
+        return Select.NONEWTABLE;
+    }
+
+    private String orderByParse(String orderSection, String tempTableName){
+        return Select.NONEWTABLE;
+    }
+
     public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
         StringBuffer sb = new StringBuffer();
         for(int i = 0; i < command.length; i++) {
@@ -85,40 +141,71 @@ public class Select implements Command{
         String originalCommand = sb.toString();
         Logger.log("Original command is: " + originalCommand);
 
-        // Assumes that the user input everything correct
+        // Assumes that the user input everything correct for now
+        // at a later date, should go back and handle edge cases
 
-        // // FROM SECTION
-        // String fromSection = this.extractMiddleSection(originalCommand, "SELECT ", " FROM");
-        // Logger.log("From section: " + fromSection);   
-
-        // String fromTableName = this.parseFrom(fromSection);
+        // possible tempTables (need to preserve in case temp table deletion is needed)
+        String newFromTable = "";
+        String newWhereTable = "";
+        String newOrderByTable = "";
 
         // FROM SECTION
         // check if WHERE exists if so extract everything between FROM...WHERE
-
         // else if ordering by exists if so extract everything between FROM...ORDERING
-
         // otherwise, extract everything between FROM...(end)
+        String extractedFrom = "";
+        if (this.stringExists(originalCommand, "WHERE")){
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "WHERE", true);
+        }else if (this.stringExists(originalCommand, "ORDERING BY")){
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERING", true);
+        }else{
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "", true);
+        }
 
         // run the fromParse(from section) --> gets new table name
         // ^ checks if the above tables exists and if so, gets the cartesian product 
         // ^ mental note, if from is taking from one table, DO NOT DELETE THE TABLE AT THE END
+        Logger.log("Running the from section: " + extractedFrom);
+        newFromTable = this.fromParse(extractedFrom);
+        Logger.log("Temp from table is: " + newFromTable);
 
         // WHERE SECTION (if WHERE exists)
-
         // check if ordering by exists and if so extract WHERE...ORDERING
-
         // else extract everything from WHERE...(end)
 
-        // run the whereParse(section, tableName) --> gets new table name
-        // ^ builds the parse tree and runs the where clause
+        if (this.stringExists(originalCommand, "WHERE")){
+            Logger.log("WHERE clause detected, running the parse logic");
+            
+            String extractedWhere = "";
+            if (this.stringExists(originalCommand, "ORDERING BY")){
+                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERING", true);
+            }else{
+                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "", true);
+            }
+
+            // run the whereParse(section, tableName) --> gets new table name
+            // ^ builds the parse tree and runs the where clause
+            Logger.log("Running where parse on: " + extractedWhere);
+            newWhereTable = this.whereParse(extractedWhere, newFromTable);
+            Logger.log("Temp where table is: " + newWhereTable);
+        }else{
+            Logger.log("No where clause detected"); 
+        }
 
         // ORDERING BY SECTION (if ordering by exists)
-
         // extract everything between ORDERING BY...(end)
+        if (this.stringExists(originalCommand, "ORDERING BY")){
+            Logger.log("Ordering clause detected");
+            String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERING BY", "", true); 
 
-        // run orderingParse(section, tableName) --> gets new table name
-        // ^ orders element by primary key
+            // run orderingParse(section, tableName) --> gets new table name
+            // ^ orders element by primary key
+            Logger.log("running ordering parse on: " + extractedOrderBy); 
+            
+        }else{
+            Logger.log("No ordering by clause detected"); 
+        }
+
 
         // SELECT section
 
