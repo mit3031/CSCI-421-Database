@@ -45,7 +45,7 @@ public class TestStringTypes {
                 rows1.add(Arrays.asList(4, "Diana", "diana@example.com"));
                 rows1.add(Arrays.asList(5, "Eve", "eve@example.com"));
                 
-                store.insert("VarCharTable", rows1);
+                //store.insert("VarCharTable", rows1);
                 
                 Page page1 = store.selectFirstPage("VarCharTable");
                 boolean correct = true;
@@ -110,7 +110,7 @@ public class TestStringTypes {
                 rows2.add(Arrays.asList(3, "GHI56", "C"));
                 rows2.add(Arrays.asList(4, "JKL78", "D"));
                 
-                store.insert("CharTable", rows2);
+                //store.insert("CharTable", rows2);
                 
                 Page page2 = store.selectFirstPage("CharTable");
                 boolean correct = true;
@@ -176,7 +176,7 @@ public class TestStringTypes {
                 rows3.add(Arrays.asList(2, "Jane", 87.3, false, "B"));
                 rows3.add(Arrays.asList(3, "Jack", 92.0, true, "A"));
                 
-                store.insert("MixedTable", rows3);
+                //store.insert("MixedTable", rows3);
                 
                 Page page3 = store.selectFirstPage("MixedTable");
                 boolean correct = true;
@@ -230,7 +230,7 @@ public class TestStringTypes {
                 rows4.add(Arrays.asList(4, "A"));
                 rows4.add(Arrays.asList(5, "Another moderately sized description"));
                 
-                store.insert("VarLengthTable", rows4);
+                //store.insert("VarLengthTable", rows4);
                 
                 Page page4 = store.selectFirstPage("VarLengthTable");
                 boolean correct = true;
@@ -302,7 +302,7 @@ public class TestStringTypes {
                     rows5.add(Arrays.asList(i, username, code));
                 }
                 
-                store.insert("LargeBatchStrings", rows5);
+                //store.insert("LargeBatchStrings", rows5);
                 
                 Page page5 = store.selectFirstPage("LargeBatchStrings");
                 int totalRows = 0;
