@@ -100,37 +100,39 @@ public class Select implements Command{
     }
     
 
-    private String parseProjection(String fromPieces) throws SQLSyntaxErrorException{
-        List<String> projectionSplit = Arrays.stream(fromPieces.split(",")).map(String::trim).collect(Collectors.toList());
+    /**
+     * Helper class to track parsing results including table names and 
+     * whether they represent temporary resources that need cleanup.
+     */
+    private static class ParseResult {
+        public final String tableName;
+        public final boolean isTemporary;
 
-        Logger.log("Tables Detected: " + projectionSplit);
-
-        // go through each attribute and check that they exists
-        for (int i = 0; i < projectionSplit.size(); i++){
-            String table = projectionSplit.get(i);
-            Catalog catalog = Catalog.getInstance();
-            
-            if (!catalog.tableExists(table)){
-                throw new SQLSyntaxErrorException("Table: " + table + " does not exists");
-            }
+        public ParseResult(String tableName, boolean isTemporary) {
+            this.tableName = tableName;
+            this.isTemporary = isTemporary;
         }
-
-        // TODO: get the cartesian product of all the tables
-        // Storage
-
-        return "this is the new table name"; 
     }
 
-    private String fromParse(String fromSection){
-        return Select.NONEWTABLE; 
+    // this is the only one that can return the original table
+    // if the user does something like SELECT * FROM t1; then no new table is generated from the 
+    // FROM clause. 
+
+    // If a new table is generated return the new table name, true
+    // if no new table is generated, return the old table name, false
+    // this way future parts can get the table name but it won't be deleted by accident. 
+    private ParseResult fromParse(String fromSection){
+        return new ParseResult("New table???", false); 
     }
 
-    private String whereParse(String whereSection, String tempTableName){
-        return Select.NONEWTABLE;
+    // in theory this should always return a new table 
+    private ParseResult whereParse(String whereSection, String tempTableName){
+        return new ParseResult(Select.NONEWTABLE, false);
     }
 
-    private String orderByParse(String orderSection, String tempTableName){
-        return Select.NONEWTABLE;
+    // in theory this should always return a new table
+    private ParseResult orderByParse(String orderSection, String tempTableName){
+        return new ParseResult(Select.NONEWTABLE, false);
     }
 
     public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
@@ -141,89 +143,103 @@ public class Select implements Command{
         String originalCommand = sb.toString();
         Logger.log("Original command is: " + originalCommand);
 
-        // Assumes that the user input everything correct for now
-        // at a later date, should go back and handle edge cases
-
-        // possible tempTables (need to preserve in case temp table deletion is needed)
-        String newFromTable = "";
-        String newWhereTable = "";
-        String newOrderByTable = "";
+        // Results from each section
+        ParseResult fromResult = null;
+        ParseResult whereResult = null;
+        ParseResult orderByResult = null;
 
         // FROM SECTION
-        // check if WHERE exists if so extract everything between FROM...WHERE
-        // else if ordering by exists if so extract everything between FROM...ORDERING
-        // otherwise, extract everything between FROM...(end)
         String extractedFrom = "";
         if (this.stringExists(originalCommand, "WHERE")){
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "WHERE", true);
         }else if (this.stringExists(originalCommand, "ORDERING BY")){
-            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERING", true);
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERING BY", true);
         }else{
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "", true);
         }
 
-        // run the fromParse(from section) --> gets new table name
-        // ^ checks if the above tables exists and if so, gets the cartesian product 
-        // ^ mental note, if from is taking from one table, DO NOT DELETE THE TABLE AT THE END
         Logger.log("Running the from section: " + extractedFrom);
-        newFromTable = this.fromParse(extractedFrom);
-        Logger.log("Temp from table is: " + newFromTable);
+        fromResult = this.fromParse(extractedFrom);
+        // every command must have a FROM clause
+        String currentWorkingTable = fromResult.tableName;
+        Logger.log("Working table from FROM: " + currentWorkingTable);
 
         // WHERE SECTION (if WHERE exists)
-        // check if ordering by exists and if so extract WHERE...ORDERING
-        // else extract everything from WHERE...(end)
-
         if (this.stringExists(originalCommand, "WHERE")){
             Logger.log("WHERE clause detected, running the parse logic");
             
             String extractedWhere = "";
             if (this.stringExists(originalCommand, "ORDERING BY")){
-                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERING", true);
+                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERING BY", true);
             }else{
                 extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "", true);
             }
 
-            // run the whereParse(section, tableName) --> gets new table name
-            // ^ builds the parse tree and runs the where clause
             Logger.log("Running where parse on: " + extractedWhere);
-            newWhereTable = this.whereParse(extractedWhere, newFromTable);
-            Logger.log("Temp where table is: " + newWhereTable);
-        }else{
-            Logger.log("No where clause detected"); 
+            whereResult = this.whereParse(extractedWhere, currentWorkingTable);
+            
+            if (!whereResult.tableName.equals(Select.NONEWTABLE)) {
+                currentWorkingTable = whereResult.tableName;
+            }
+            Logger.log("Working table after WHERE: " + currentWorkingTable);
         }
 
         // ORDERING BY SECTION (if ordering by exists)
-        // extract everything between ORDERING BY...(end)
         if (this.stringExists(originalCommand, "ORDERING BY")){
             Logger.log("Ordering clause detected");
             String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERING BY", "", true); 
 
-            // run orderingParse(section, tableName) --> gets new table name
-            // ^ orders element by primary key
             Logger.log("running ordering parse on: " + extractedOrderBy); 
-            
-        }else{
-            Logger.log("No ordering by clause detected"); 
+            orderByResult = this.orderByParse(extractedOrderBy, currentWorkingTable);
+
+            if (!orderByResult.tableName.equals(Select.NONEWTABLE)) {
+                currentWorkingTable = orderByResult.tableName;
+            }
+            Logger.log("Working table after ORDERING: " + currentWorkingTable);
         }
 
 
         // SELECT section
+        String extractedSelect = this.extractMiddleSection(originalCommand, "SELECT", "FROM", true);
+        Logger.log("SELECT section: " + extractedSelect);
 
-        // grab everything between SELECT...FROM
+        if (extractedSelect.equals("*")) {
+            Logger.log("Executing SELECT * on " + currentWorkingTable);
+            // TODO: Implementation
+        } else {
+            Logger.log("Executing projection " + extractedSelect + " on " + currentWorkingTable);
+            // TODO: Implementation
+        }
 
-        // if * simply run the normal select on the table
-            // if * do not delete temp table
+        // CLEANUP SECTION
+        // We delete if isTemporary is true and it hasn't been passed forward to the next stage
+        // Note: In a real implementation, even if passed forward, you might delete the 'parent' temp table
+        // once the 'child' temp table is fully materialized.
 
-        // otherwise, create a temp table and run select on that
-
-
-        // Mental NOTE, should be deleting the tables once we are done with them
-        // there no way to get around deleting the select table until after the select is done but 
-        // other than that, we should be good.  
+        if (orderByResult != null && orderByResult.isTemporary) {
+            Logger.log("Deleting temp order table: " + orderByResult.tableName);
+            Catalog.getInstance().dropTable(orderByResult.tableName);
+        }
         
-        
+        if (whereResult != null && whereResult.isTemporary) {
+            // Only delete if it's not the same as the order table (which might have just been deleted)
+            if (orderByResult == null || !orderByResult.tableName.equals(whereResult.tableName)) {
+                Logger.log("Deleting temp where table: " + whereResult.tableName);
+                Catalog.getInstance().dropTable(whereResult.tableName);
+            }
+        }
 
-    
+        if (fromResult != null && fromResult.isTemporary) {
+            // Only delete if it's not the same as where or order tables
+            boolean matchesWhere = (whereResult != null && whereResult.tableName.equals(fromResult.tableName));
+            boolean matchesOrder = (orderByResult != null && orderByResult.tableName.equals(fromResult.tableName));
+            
+            if (!matchesWhere && !matchesOrder) {
+                Logger.log("Deleting temp from table: " + fromResult.tableName);
+                Catalog.getInstance().dropTable(fromResult.tableName);
+            }
+        }
+
         return true;
     }
 
