@@ -114,10 +114,9 @@ public class Select implements Command{
         }
     }
 
-    // this is the only one that can return the original table
+    // this is the only one that can return the original table (never use NONEWTABLE)
     // if the user does something like SELECT * FROM t1; then no new table is generated from the 
     // FROM clause. 
-
     // If a new table is generated return the new table name, true
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
