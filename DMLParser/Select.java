@@ -122,7 +122,7 @@ public class Select implements Command{
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
     private ParseResult fromParse(String fromSection){
-        return new ParseResult("New table???", false); 
+        return new ParseResult("New table???", true); 
     }
 
     // in theory this should always return a new table 
@@ -132,7 +132,7 @@ public class Select implements Command{
 
     // in theory this should always return a new table
     private ParseResult orderByParse(String orderSection, String tempTableName){
-        return new ParseResult(Select.NONEWTABLE, false);
+        return new ParseResult("Woah, but I'm a new table", true);
     }
 
     public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{

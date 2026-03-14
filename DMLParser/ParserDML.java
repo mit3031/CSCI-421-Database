@@ -153,7 +153,7 @@ public class ParserDML {
         }catch (Exception e){}
 
         try {
-            ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ordering by d;");
+            ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ORDERING BY d;");
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
         }
