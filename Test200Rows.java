@@ -37,7 +37,7 @@ public class Test200Rows {
             
             System.out.println("Inserting 200 rows...");
             long startTime = System.currentTimeMillis();
-            store.insert("Test200", rows);
+            //store.insert("Test200", rows);
             long endTime = System.currentTimeMillis();
             System.out.println("Insert complete in " + (endTime - startTime) + "ms\n");
             

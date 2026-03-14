@@ -42,6 +42,7 @@ public class BufferManager {
     public void newPage(int Address, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
         Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4), Address+ catalog.getPageSize(), true, tableName);
+        catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
         //adds new page to bufferpages
         addPageToBuffer(newPage);
         newPage.SetModified(true);
@@ -91,7 +92,7 @@ public class BufferManager {
         return page;
     }
 
-    public void insert(String tableName, List<List<Object>> rows) throws Exception {
+    public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(tableName);
 
@@ -99,7 +100,6 @@ public class BufferManager {
             throw new Exception("Table does not exist: " + tableName);
         }
 
-        int pageAddress = catalog.getAddressOfPage(tableName);
         Page currentPage = select(pageAddress, tableName);
 
         for (List<Object> row : rows) {
@@ -115,10 +115,10 @@ public class BufferManager {
             // If not enough space, we need a new page
             if (availableSpace < totalRecordSize) {
                 // Write current page before moving to a new one
-                if (currentPage.getModified()) {
-                    writePage(currentPage);
-                    currentPage.SetModified(false);
-                }
+                //if (currentPage.getModified()) {
+                    //writePage(currentPage);
+                    //currentPage.SetModified(false);
+                //}
 
                 // Get a new page
                 int newPageAddress;
@@ -127,14 +127,15 @@ public class BufferManager {
                     catalog.removeFirstFreePage();
                 } else {
                     // Allocate a new page at the end
-                    newPageAddress = currentPage.getPageAddress() + catalog.getPageSize();
+                    newPageAddress = catalog.getFirstFreeAddress();
                 }
 
                 // Mark current page as having a next page
                 currentPage.setNextPage(newPageAddress);
                 currentPage.SetModified(true);
-                writePage(currentPage);
-                currentPage.SetModified(false);
+                //let buffer handle this
+                //writePage(currentPage);
+                //currentPage.SetModified(false);
 
                 // Create the new page
                 newPage(newPageAddress, tableName);
@@ -153,11 +154,11 @@ public class BufferManager {
         }
 
         // Write the final page
-        if (currentPage.getModified()) {
-            writePage(currentPage);
-            currentPage.SetModified(false);
-        }
-
+        //if (currentPage.getModified()) {
+            //writePage(currentPage);
+            //currentPage.SetModified(false);
+        //}
+        return currentPage.getPageAddress();
     }
 
     /**
@@ -253,11 +254,13 @@ public class BufferManager {
         page.updateLastUsed();
     }
 
+    //Do not call buffer manager handles this
     private void writePage(Page page) throws IOException {
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "rw")){
             currentPage.seek(page.getPageAddress());
             Catalog catalog = Catalog.getInstance();
             if (page.getTableName() == null) {
+                catalog.addFirstFreePage(page.getPageAddress());
                 for(int i = 0; i<catalog.getPageSize(); i++){
                     currentPage.write((byte)0);
                 }
@@ -433,6 +436,8 @@ public class BufferManager {
 
             // Write global database info first
             out.writeInt(catalog.getPageSize());
+            // Write start of empty space in file
+            out.writeInt(catalog.getFirstFreeAddress());
             //Write number of freePages for reading it in
             LinkedList<Integer> firstFreePage = catalog.getAllFreePages();
             out.writeInt(firstFreePage.size());
@@ -529,6 +534,9 @@ public class BufferManager {
                 System.out.println("Ignoring provided page size. Using prior size of " + pageSize);
             }
             catalog.setPageSize(pageSize);
+            //Read in start of free space in file
+            int firstFreePageAddress = in.readInt();
+            catalog.setFirstFreeAddress(firstFreePageAddress);
             int numFree = in.readInt();
             for (int i = 0; i < numFree; i++) {
                 catalog.addFirstFreePage(in.readInt());
@@ -668,44 +676,4 @@ public class BufferManager {
         }
     }
 
-// todo review below comment
-
-// I don't think we need this, changed the way we drop attributes but didn't want to delete it yet
-//    public void DropAttributes(TableSchema table, ArrayList<String> attributes) throws IOException {
-//        Page page = this.bufferPages.get(table.getRootPageID());
-//        if (page == null) {
-//            page = readPage(table.getRootPageID(), table.getTableName());
-//        }
-//        Catalog catalog = Catalog.getInstance();
-//        for(int i = 0; i < attributes.size(); i++) {
-//            List<Attribute> previousAttributes= table.getAttributes();
-//            int index = 0;
-//            for (int j = 0; j < previousAttributes.size(); j++) {
-//                if (previousAttributes.get(j).getName().equalsIgnoreCase(attributes.get(i))) {
-//                    index = j;
-//                }
-//            }
-//            table.dropAttribute(attributes.get(i));
-//            page.removeAttributeFromRecords(index);
-//        }
-//        page.SetModified(true);
-//        page.updateLastUsed();
-//    }
-
-    public void AddAttributes(){
-        //recompute length
-        //change freespaceend
-        //if freespaceend <= freespacestart split page
-    }
-
-    //use this for writing all pages on shutdown
-    public void writePages() throws IOException {
-        for (Integer address : this.bufferPages.keySet()) {
-            Page page = this.bufferPages.get(address);
-            if (page.getModified()) {
-                writePage(page);
-            }
-        }
-        bufferPages.clear();
-    }
 }

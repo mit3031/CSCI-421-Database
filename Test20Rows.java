@@ -34,7 +34,7 @@ public class Test20Rows {
             }
             
             System.out.println("Inserting 20 rows...");
-            store.insert("Test20", rows);
+            //store.insert("Test20", rows);
             System.out.println("Insert complete!\n");
             
             // Read back

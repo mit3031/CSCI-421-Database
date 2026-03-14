@@ -85,7 +85,8 @@ public class AlterTableDrop implements Command {
                 return false;
                 //throw new SQLSyntaxErrorException("Attribute " + attributeNameToDrop + " not found");
             }
-            
+
+            int address = catalog.getAddressOfPage(TEMP_TABLE_NAME);
             while(true){
                 List<List<Object>> rows = new ArrayList<>();
 
@@ -97,7 +98,7 @@ public class AlterTableDrop implements Command {
                 }
 
                 // insert in batches
-                storageManager.insert(TEMP_TABLE_NAME, rows);
+                address = storageManager.insert(TEMP_TABLE_NAME, rows, address);
 
                 if (currPage.getNextPage() != -1) {
                     currPage = storageManager.select(currPage.getNextPage(), tableName);

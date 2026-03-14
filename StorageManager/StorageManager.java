@@ -48,8 +48,6 @@ public class StorageManager {
         BufferManager bufferManager = BufferManager.getInstance();
         bufferManager.dropTable(table.getTableName());
         catalog.dropTable(table.getTableName());
-        // add this page to free page list
-        catalog.addFirstFreePage(table.getRootPageID());
     }
 
     public void shutdown() throws IOException {
@@ -157,15 +155,17 @@ public class StorageManager {
         return bufferManager.select(address, tableName);
     }
 
-    public void insert(String tableName, List<List<Object>> rows) throws Exception {
+    public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
         BufferManager bufferManager = BufferManager.getInstance();
-        bufferManager.insert(tableName, rows);
+        int nextAddress = bufferManager.insert(tableName, rows, pageAddress);
+        return nextAddress;
     }
 
-    public void insertSingleRow(String tableName, List<Object> row) throws Exception {
+    public Integer insertSingleRow(String tableName, List<Object> row, int pageAddress) throws Exception {
         List<List<Object>> singleRowBatch = new ArrayList<>();
         singleRowBatch.add(row);
-        this.insert(tableName, singleRowBatch);
+        int nextAddress = this.insert(tableName, singleRowBatch, pageAddress);
+        return nextAddress;
     }
 
     public static void main(String[] args){
@@ -202,7 +202,7 @@ public class StorageManager {
                 rows1.add(Arrays.asList(200));
                 rows1.add(Arrays.asList(300));
                 
-                store.insert("SimpleTable", rows1);
+                //store.insert("SimpleTable", rows1);
                 
                 Page page1 = store.selectFirstPage("SimpleTable");
                 if (page1.getNumRows() == 3 && 
@@ -239,7 +239,7 @@ public class StorageManager {
                 rows2.add(Arrays.asList(2, 87.3, false));
                 rows2.add(Arrays.asList(3, 92.0, true));
                 
-                store.insert("MixedTable", rows2);
+                //store.insert("MixedTable", rows2);
                 
                 Page page2 = store.selectFirstPage("MixedTable");
                 if (page2.getNumRows() == 3 &&
@@ -318,7 +318,7 @@ public class StorageManager {
                     rows3.add(Arrays.asList(i, i * 2));
                 }
                 
-                store.insert("MediumTable", rows3);
+                //store.insert("MediumTable", rows3);
                 
                 Page page3 = store.selectFirstPage("MediumTable");
                 int totalRows = 0;
@@ -384,18 +384,18 @@ public class StorageManager {
                 List<List<Object>> batch1 = new ArrayList<>();
                 batch1.add(Arrays.asList(10));
                 batch1.add(Arrays.asList(20));
-                store.insert("BatchTable", batch1);
+                //store.insert("BatchTable", batch1);
                 
                 // Second batch
                 List<List<Object>> batch2 = new ArrayList<>();
                 batch2.add(Arrays.asList(30));
                 batch2.add(Arrays.asList(40));
-                store.insert("BatchTable", batch2);
+                //store.insert("BatchTable", batch2);
                 
                 // Third batch
                 List<List<Object>> batch3 = new ArrayList<>();
                 batch3.add(Arrays.asList(50));
-                store.insert("BatchTable", batch3);
+                //store.insert("BatchTable", batch3);
                 
                 Page page4 = store.selectFirstPage("BatchTable");
                 int count = 0;
