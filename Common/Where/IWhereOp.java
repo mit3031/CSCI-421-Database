@@ -1,5 +1,7 @@
 package Common.Where;
 
+import Catalog.TableSchema;
+
 import java.util.ArrayList;
 
 public interface IWhereOp {
@@ -15,7 +17,7 @@ public interface IWhereOp {
      * Evaluates a tuple
      * @return whether or not the tuple satistfies this WhereOp
      */
-    public boolean evaluate(ArrayList<Object> tuple);
+    public boolean evaluate(ArrayList<Object> tuple, TableSchema tableSchema);
 
 
 }
