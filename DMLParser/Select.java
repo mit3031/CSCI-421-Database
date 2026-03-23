@@ -120,18 +120,226 @@ public class Select implements Command{
     // If a new table is generated return the new table name, true
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
-    private ParseResult fromParse(String fromSection){
-        return new ParseResult("New table???", true); 
+    private ParseResult fromParse(String fromSection) throws SQLSyntaxErrorException {
+        // For now, just handle simple single-table case
+        // TODO: Later implement cartesian product for multiple tables
+        String tableName = fromSection.trim();
+        
+        // Check if table exists
+        Catalog catalog = Catalog.getInstance();
+        if (!catalog.tableExists(tableName)){
+            throw new SQLSyntaxErrorException("Table: " + tableName + " does not exist");
+        }
+        
+        // Single table, no cartesian product needed - return original table
+        return new ParseResult(tableName, false); 
     }
 
     // in theory this should always return a new table 
-    private ParseResult whereParse(String whereSection, String tempTableName){
+    private ParseResult whereParse(String whereSection, String tempTableName) throws SQLSyntaxErrorException {
+        // TODO: Implement WHERE clause logic
         return new ParseResult(Select.NONEWTABLE, false);
     }
 
     // in theory this should always return a new table
-    private ParseResult orderByParse(String orderSection, String tempTableName){
-        return new ParseResult("Woah, but I'm a new table", true);
+    private ParseResult orderByParse(String orderSection, String tempTableName) throws SQLSyntaxErrorException {
+        // TODO: Implement ORDER BY logic
+        return new ParseResult(Select.NONEWTABLE, false);
+    }
+
+    /**
+     * Executes a SELECT * query on the specified table
+     * @param tableName the name of the table to select from
+     * @throws SQLSyntaxErrorException if there's an error reading from the table
+     */
+    private void executeSelectAll(String tableName) throws SQLSyntaxErrorException {
+        Catalog cat = Catalog.getInstance();
+        
+        // Verify that table exists
+        if (!cat.tableExists(tableName)){
+            throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
+        }
+        
+        StorageManager store = StorageManager.getStorageManager();
+        try {
+            Page currentPage = store.selectFirstPage(tableName);
+            
+            if (currentPage == null) {
+                Logger.log("Table " + tableName + " is empty");
+                System.out.println("Table " + tableName + " is empty");
+                return;
+            }
+            
+            // Get table schema for column names
+            TableSchema schema = cat.getTable(tableName);
+            List<Attribute> attributes = schema.getAttributes();
+            
+            // Collect all rows first to calculate column widths
+            List<List<Object>> allRows = new ArrayList<>();
+            while (true){
+                for (int i = 0; i < currentPage.getNumRows(); i++){
+                    allRows.add(currentPage.getRecord(i));
+                }
+                if (currentPage.getNextPage() == -1){
+                    break;
+                }
+                currentPage = store.select(currentPage.getNextPage(), tableName);
+            }
+            
+            // Calculate column widths
+            int[] columnWidths = new int[attributes.size()];
+            for (int i = 0; i < attributes.size(); i++) {
+                columnWidths[i] = attributes.get(i).getName().length();
+                
+                for (List<Object> row : allRows) {
+                    String value = formatValue(row.get(i));
+                    columnWidths[i] = Math.max(columnWidths[i], value.length());
+                }
+                
+                columnWidths[i] = Math.max(columnWidths[i], 4);
+            }
+            
+            // Print header row
+            for (int i = 0; i < attributes.size(); i++) {
+                System.out.print("|");
+                System.out.print(String.format(" %" + columnWidths[i] + "s ", 
+                    attributes.get(i).getName()));
+            }
+            System.out.println("|");
+            
+            // Print separator line
+            for (int i = 0; i < attributes.size(); i++) {
+                System.out.print("-");
+                for (int j = 0; j < columnWidths[i] + 2; j++) {
+                    System.out.print("-");
+                }
+            }
+            System.out.println("-");
+            
+            // Print data rows
+            for (List<Object> row : allRows) {
+                for (int i = 0; i < row.size(); i++) {
+                    System.out.print("|");
+                    String value = formatValue(row.get(i));
+                    System.out.print(String.format(" %" + columnWidths[i] + "s ", value));
+                }
+                System.out.println("|");
+            }
+
+        } catch (Exception e) {
+            throw new SQLSyntaxErrorException("Error reading from table: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Executes a projection query (SELECT specific columns)
+     * @param tableName the name of the table to select from
+     * @param projection comma-separated list of column names
+     * @throws SQLSyntaxErrorException if there's an error or column doesn't exist
+     */
+    private void executeProjection(String tableName, String projection) throws SQLSyntaxErrorException {
+        Catalog cat = Catalog.getInstance();
+        
+        // Verify that table exists
+        if (!cat.tableExists(tableName)){
+            throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
+        }
+        
+        // Parse projection attributes
+        List<String> projectionList = Arrays.stream(projection.split(","))
+            .map(String::trim)
+            .collect(Collectors.toList());
+        
+        // Get table schema
+        TableSchema schema = cat.getTable(tableName);
+        List<Attribute> allAttributes = schema.getAttributes();
+        
+        // Find indices of projection attributes
+        List<Integer> projectionIndices = new ArrayList<>();
+        List<Attribute> projectionAttributes = new ArrayList<>();
+        
+        for (String projAttr : projectionList) {
+            boolean found = false;
+            for (int i = 0; i < allAttributes.size(); i++) {
+                if (allAttributes.get(i).getName().equalsIgnoreCase(projAttr)) {
+                    projectionIndices.add(i);
+                    projectionAttributes.add(allAttributes.get(i));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                throw new SQLSyntaxErrorException("Column not found: " + projAttr);
+            }
+        }
+        
+        StorageManager store = StorageManager.getStorageManager();
+        try {
+            Page currentPage = store.selectFirstPage(tableName);
+            
+            if (currentPage == null) {
+                Logger.log("Table " + tableName + " is empty");
+                System.out.println("Table " + tableName + " is empty");
+                return;
+            }
+            
+            // Collect all rows
+            List<List<Object>> allRows = new ArrayList<>();
+            while (true){
+                for (int i = 0; i < currentPage.getNumRows(); i++){
+                    allRows.add(currentPage.getRecord(i));
+                }
+                if (currentPage.getNextPage() == -1){
+                    break;
+                }
+                currentPage = store.select(currentPage.getNextPage(), tableName);
+            }
+            
+            // Calculate column widths for projection
+            int[] columnWidths = new int[projectionAttributes.size()];
+            for (int i = 0; i < projectionAttributes.size(); i++) {
+                columnWidths[i] = projectionAttributes.get(i).getName().length();
+                
+                int colIndex = projectionIndices.get(i);
+                for (List<Object> row : allRows) {
+                    String value = formatValue(row.get(colIndex));
+                    columnWidths[i] = Math.max(columnWidths[i], value.length());
+                }
+                
+                columnWidths[i] = Math.max(columnWidths[i], 4);
+            }
+            
+            // Print header row
+            for (int i = 0; i < projectionAttributes.size(); i++) {
+                System.out.print("|");
+                System.out.print(String.format(" %" + columnWidths[i] + "s ", 
+                    projectionAttributes.get(i).getName()));
+            }
+            System.out.println("|");
+            
+            // Print separator line
+            for (int i = 0; i < projectionAttributes.size(); i++) {
+                System.out.print("-");
+                for (int j = 0; j < columnWidths[i] + 2; j++) {
+                    System.out.print("-");
+                }
+            }
+            System.out.println("-");
+            
+            // Print data rows (only projection columns)
+            for (List<Object> row : allRows) {
+                for (int i = 0; i < projectionIndices.size(); i++) {
+                    System.out.print("|");
+                    int colIndex = projectionIndices.get(i);
+                    String value = formatValue(row.get(colIndex));
+                    System.out.print(String.format(" %" + columnWidths[i] + "s ", value));
+                }
+                System.out.println("|");
+            }
+
+        } catch (Exception e) {
+            throw new SQLSyntaxErrorException("Error reading from table: " + e.getMessage());
+        }
     }
 
     public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
@@ -204,10 +412,10 @@ public class Select implements Command{
 
         if (extractedSelect.equals("*")) {
             Logger.log("Executing SELECT * on " + currentWorkingTable);
-            // TODO: Implementation
+            this.executeSelectAll(currentWorkingTable);
         } else {
             Logger.log("Executing projection " + extractedSelect + " on " + currentWorkingTable);
-            // TODO: Implementation
+            this.executeProjection(currentWorkingTable, extractedSelect);
         }
 
         // CLEANUP SECTION
