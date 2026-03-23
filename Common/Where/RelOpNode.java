@@ -7,10 +7,13 @@ import java.util.ArrayList;
 public class RelOpNode implements IWhereOp{
     private IOperandNode left;
     private IOperandNode right;
+    private ComparisonOp op;
 
-    public RelOpNode(IOperandNode n1, IOperandNode n2){
+    public RelOpNode(IOperandNode n1, IOperandNode n2, String relOp){
         left = n1;
         right = n2;
+        //todo figure out op from string
+        op = ComparisonOp.EQUAL;
     }
 
     @Override
