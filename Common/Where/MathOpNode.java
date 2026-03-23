@@ -8,11 +8,10 @@ public class MathOpNode implements IOperandNode{
     private IOperandNode left;
     private IOperandNode right;
     private MathOp operation;
-    public MathOpNode(IOperandNode left, IOperandNode right, String op){
+    public MathOpNode(IOperandNode left, IOperandNode right, String op) throws BadOperatorException{
         this.left = left;
         this.right = right;
-        operation = MathOp.ADD;
-        //todo figure out operation from string
+        operation = MathOp.getOp(op);
     }
 
 

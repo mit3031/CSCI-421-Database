@@ -24,4 +24,14 @@ public enum MathOp {
             case DIVIDE ->  i1 / i2;
         };
     }
+
+    public static MathOp getOp(String operator) throws BadOperatorException{
+        return switch(operator){
+            case "+" -> MathOp.ADD;
+            case "-" -> MathOp.SUBTRACT;
+            case "*" -> MathOp.MULTIPLY;
+            case "/" -> MathOp.DIVIDE;
+            default -> throw new BadOperatorException("Math Operation " + operator + " Not recognized!");
+        };
+    }
 }

@@ -51,4 +51,16 @@ public enum ComparisonOp {
         };
     }
 
+    public static ComparisonOp getOp(String operation) throws BadOperatorException{
+        return switch(operation){
+          case "<" -> ComparisonOp.LESS_THAN;
+          case "<=" -> ComparisonOp.LESS_THAN_EQUAL;
+          case ">" -> ComparisonOp.GREATER_THAN;
+          case ">=" -> ComparisonOp.GREATER_THAN_EQUAL;
+          case "==" -> ComparisonOp.EQUAL;
+          case "<>" -> ComparisonOp.NOT_EQUAL;
+            default -> throw new BadOperatorException("Relative operator " + operation + " Not Found!");
+        };
+    }
+
     }

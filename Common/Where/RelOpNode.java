@@ -9,11 +9,10 @@ public class RelOpNode implements IWhereOp{
     private IOperandNode right;
     private ComparisonOp op;
 
-    public RelOpNode(IOperandNode n1, IOperandNode n2, String relOp){
+    public RelOpNode(IOperandNode n1, IOperandNode n2, String relOp) throws BadOperatorException{
         left = n1;
         right = n2;
-        //todo figure out op from string
-        op = ComparisonOp.EQUAL;
+        op = ComparisonOp.getOp((relOp));
     }
 
     @Override
