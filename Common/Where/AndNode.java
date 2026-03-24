@@ -24,7 +24,7 @@ public class AndNode implements IWhereOp{
         if(left != null && right != null){
             return left.evaluate(tuple,tableSchema) || right.evaluate(tuple,tableSchema);
         }
-        //todo maybe throw an exception here, tree d
+        //todo maybe throw an exception here, tree not defined
         return false;
     }
 }
