@@ -123,6 +123,8 @@ public class Select implements Command{
     private ParseResult fromParse(String fromSection) throws SQLSyntaxErrorException {
         // For now, just handle simple single-table case
         // TODO: Later implement cartesian product for multiple tables
+        // When cartesian product is implemented, create temp table with qualified attribute names
+        // Example: FROM A, B where A has (x,y) and B has (x,q) -> create temp table with (A.x, A.y, B.x, B.q)
         String tableName = fromSection.trim();
         
         // Check if table exists
@@ -233,8 +235,8 @@ public class Select implements Command{
 
     /**
      * Executes a projection query (SELECT specific columns)
-     * @param tableName the name of the table to select from
-     * @param projection comma-separated list of column names
+     * @param tableName the name of the table to select from (could be a temp table from cartesian product)
+     * @param projection comma-separated list of column names (may include dot notation)
      * @throws SQLSyntaxErrorException if there's an error or column doesn't exist
      */
     private void executeProjection(String tableName, String projection) throws SQLSyntaxErrorException {
@@ -259,17 +261,71 @@ public class Select implements Command{
         List<Attribute> projectionAttributes = new ArrayList<>();
         
         for (String projAttr : projectionList) {
-            boolean found = false;
-            for (int i = 0; i < allAttributes.size(); i++) {
-                if (allAttributes.get(i).getName().equalsIgnoreCase(projAttr)) {
-                    projectionIndices.add(i);
-                    projectionAttributes.add(allAttributes.get(i));
-                    found = true;
-                    break;
+            // Check if this is a qualified name (table.attribute)
+            if (projAttr.contains(".")) {
+                // Qualified name: table.attribute
+                String[] parts = projAttr.split("\\.");
+                if (parts.length != 2) {
+                    throw new SQLSyntaxErrorException("Invalid qualified attribute name: " + projAttr);
                 }
-            }
-            if (!found) {
-                throw new SQLSyntaxErrorException("Column not found: " + projAttr);
+                
+                String requestedTable = parts[0].toLowerCase().trim();
+                String requestedAttr = parts[1].toLowerCase().trim();
+                
+                // Look for this exact qualified attribute in the schema
+                boolean found = false;
+                for (int i = 0; i < allAttributes.size(); i++) {
+                    String attrName = allAttributes.get(i).getName().toLowerCase();
+                    
+                    // Check if attribute matches the qualified name
+                    // For single tables, attribute should just be the name
+                    // For cartesian products, attribute will be "table.attribute"
+                    if (attrName.equals(requestedTable + "." + requestedAttr)) {
+                        // Exact match with qualified name
+                        projectionIndices.add(i);
+                        projectionAttributes.add(allAttributes.get(i));
+                        found = true;
+                        break;
+                    } else if (attrName.equals(requestedAttr) && tableName.equalsIgnoreCase(requestedTable)) {
+                        // Single table case: user qualified with table name, attribute is unqualified
+                        projectionIndices.add(i);
+                        projectionAttributes.add(allAttributes.get(i));
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    throw new SQLSyntaxErrorException("Column not found: " + projAttr);
+                }
+            } else {
+                // Unqualified name: check for ambiguity
+                List<Integer> matchingIndices = new ArrayList<>();
+                
+                for (int i = 0; i < allAttributes.size(); i++) {
+                    String attrName = allAttributes.get(i).getName().toLowerCase();
+                    String searchAttr = projAttr.toLowerCase();
+                    
+                    // Check if attribute name matches (could be qualified or unqualified in schema)
+                    if (attrName.equals(searchAttr)) {
+                        // Exact match
+                        matchingIndices.add(i);
+                    } else if (attrName.contains(".") && attrName.endsWith("." + searchAttr)) {
+                        // Schema has qualified name (e.g., "a.x"), user searched for unqualified ("x")
+                        matchingIndices.add(i);
+                    }
+                }
+                
+                if (matchingIndices.isEmpty()) {
+                    throw new SQLSyntaxErrorException("Column not found: " + projAttr);
+                } else if (matchingIndices.size() > 1) {
+                    throw new SQLSyntaxErrorException("Ambiguous column name: " + projAttr + 
+                        ". Please qualify with table name (e.g., tablename." + projAttr + ")");
+                } else {
+                    // Exactly one match - unambiguous
+                    projectionIndices.add(matchingIndices.get(0));
+                    projectionAttributes.add(allAttributes.get(matchingIndices.get(0)));
+                }
             }
         }
         
