@@ -121,7 +121,9 @@ public class Select implements Command{
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
     private ParseResult fromParse(String fromSection){
-        return new ParseResult("New table???", true); 
+        // Temporarily returns the actual table name, and false because it's not a temp table yet
+        // STILL a place holder, just needed this for my ORDER BY test to work in Selecttest.java
+        return new ParseResult(fromSection.trim(), false);
     }
 
     // in theory this should always return a new table 
