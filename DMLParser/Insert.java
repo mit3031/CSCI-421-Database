@@ -336,6 +336,10 @@ public class Insert implements Command {
                                            List<Object> row, Set<String> pkValuesInBatch,
                                            int rowNum) throws SQLSyntaxErrorException {
 
+        if (tableName.startsWith("$temp_order_")) {
+            return; // skip PK validation for temporary sorting tables
+        }
+
         // Find primary key column(s)
         List<Integer> pkIndices = new ArrayList<>();
         for (int i = 0; i < attributes.size(); i++) {
