@@ -337,8 +337,8 @@ public class Select implements Command{
         String extractedFrom = "";
         if (this.stringExists(originalCommand, "WHERE")){
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "WHERE", true);
-        }else if (this.stringExists(originalCommand, "ORDERING BY")){
-            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERING BY", true);
+        }else if (this.stringExists(originalCommand, "ORDERBY")){
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERBY", true);
         }else{
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "", true);
         }
@@ -354,8 +354,8 @@ public class Select implements Command{
             Logger.log("WHERE clause detected, running the parse logic");
             
             String extractedWhere = "";
-            if (this.stringExists(originalCommand, "ORDERING BY")){
-                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERING BY", true);
+            if (this.stringExists(originalCommand, "ORDERBY")){
+                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERBY", true);
             }else{
                 extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "", true);
             }
@@ -370,9 +370,9 @@ public class Select implements Command{
         }
 
         // ORDERING BY SECTION (if ordering by exists)
-        if (this.stringExists(originalCommand, "ORDERING BY")){
+        if (this.stringExists(originalCommand, "ORDERBY")){
             Logger.log("Ordering clause detected");
-            String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERING BY", "", true); 
+            String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERBY", "", true);
 
             Logger.log("running ordering parse on: " + extractedOrderBy); 
             orderByResult = this.orderByParse(extractedOrderBy, currentWorkingTable);
