@@ -6,13 +6,14 @@ import Catalog.TableSchema;
 import AttributeInfo.Attribute;
 import Common.Logger;
 import Common.Page;
+import Common.Where.*;
 import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
-import java.util.Arrays;
+
+import static Common.Where.BuildTree.buildTree;
 
 /*
 
@@ -126,6 +127,7 @@ public class Select implements Command{
 
     // in theory this should always return a new table 
     private ParseResult whereParse(String whereSection, String tempTableName){
+        buildTree(whereSection);
         return new ParseResult(Select.NONEWTABLE, false);
     }
 
