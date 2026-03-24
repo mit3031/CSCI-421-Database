@@ -164,7 +164,8 @@ public class StorageManager {
     public Integer insertSingleRow(String tableName, List<Object> row, int pageAddress) throws Exception {
         List<List<Object>> singleRowBatch = new ArrayList<>();
         singleRowBatch.add(row);
-        int nextAddress = this.insert(tableName, singleRowBatch, pageAddress);
+        // This insert previously needed to send the current address since heap insertion was used, as of now with primarkey sort insertion it should always start from page one
+        int nextAddress = this.insert(tableName, singleRowBatch, Catalog.getInstance().getAddressOfPage(tableName));
         return nextAddress;
     }
 

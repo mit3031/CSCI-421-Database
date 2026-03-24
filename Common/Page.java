@@ -20,6 +20,7 @@ public class Page {
     private Instant lastUsed;
     private boolean modified;
     private String tableName;
+    private boolean hasSplit;
 
     public Page(int numRows, int address, int nextPage, int freeSpaceStart, int freeSpaceEnd, boolean modified, String tableName) {
         this.numRows = numRows;
@@ -32,6 +33,7 @@ public class Page {
         this.modified = modified;
         this.tableName = tableName;
         lastUsed = Instant.now();
+        hasSplit = false;
     }
 
     public int getNextPage(){
@@ -61,13 +63,68 @@ public class Page {
         return lastUsed;
     }
 
+    //Using index -1 or records.size will add record to the end of the list
+    public void addRecord(ArrayList<Object> recordData, int index){
+        if(index < -1 || index > records.size()){
+            throw new IndexOutOfBoundsException("gIndex: " + index + " out of bounds for Size: " + records.size());
+        }
+
+        if (index == -1){
+            this.records.add(recordData);
+        } else {
+            this.records.add(index,recordData);
+        }
+
+        int length = getRecordLength(recordData);
+
+        //update freespacestart and freespaceend
+        this.freeSpaceStart = this.freeSpaceStart + (Integer.BYTES*2);
+        this.freeSpaceEnd -= length;
+    }
+
+    //Wrapper function, simply adds the element to the end of the list
     public void addRecord(ArrayList<Object> recordData){
-        this.records.add(recordData);
+        addRecord(recordData,-1);
+    }
+
+    public void removeRecord(int index){
+        ArrayList<Object> recordData = this.records.get(index);
+        this.records.remove(index);
+        int length = getRecordLength(recordData);
+        //update freespacestart and freespaceend
+        this.freeSpaceStart = this.freeSpaceStart - (Integer.BYTES*2);
+        this.freeSpaceEnd += length;
+        numRows--;
+    }
+
+    // Wrapper function, removes the last element
+    public void removeLastRecord(){
+        removeRecord(records.size()-1);
+    }
+
+    /**
+     * Creates a copy of the records, with the new element inserted. This is used for splitting the page.
+     *
+     */
+    public ArrayList<ArrayList<Object>> arrayForSplit(ArrayList<Object> toBeInserted, int index){
+        if(index < -1 || index > records.size()){
+            throw new IndexOutOfBoundsException("Index: " + index + " out of bounds for Size: " + records.size());
+        }
+        if(index == -1){
+            index = records.size();
+        }
+        ArrayList<ArrayList<Object>> arrayBeforeSplit = new ArrayList<>(records);
+        arrayBeforeSplit.add(index, toBeInserted);
+
+
+        return arrayBeforeSplit;
+    }
+
+    private int getRecordLength(ArrayList<Object> recordData){
         this.modified = true;
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(this.tableName);
         List<Attribute> attributes = table.getAttributes();
-        //replace with recordlength function later?
         int length = 0;
         for (int i = 0; i<recordData.size(); i++) {
             if (recordData.get(i) != null) {
@@ -79,9 +136,7 @@ public class Page {
             }
         }
         length += Integer.BYTES;
-        //update freespacestart and freespaceend
-        this.freeSpaceStart = this.freeSpaceStart + (Integer.BYTES*2);
-        this.freeSpaceEnd -= length;
+        return length;
     }
 
 
@@ -132,6 +187,18 @@ public class Page {
 
     public void setFreeSpaceEnd(int freeSpaceEnd) {
         this.freeSpaceEnd = freeSpaceEnd;
+    }
+
+    public void setPageHasSplit(boolean hasSplit) {
+        this.hasSplit = hasSplit;
+    }
+
+    public boolean hasPageSplit(){
+        return hasSplit;
+    }
+
+    public boolean isEmpty(){
+        return records.isEmpty();
     }
 
     /**
