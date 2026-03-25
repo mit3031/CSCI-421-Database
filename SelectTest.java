@@ -382,6 +382,44 @@ public class SelectTest {
             }
 
             // ============================================================
+            // TEST 11: SELECT with ORDERBY (Sorting & Duplicate Bypass)
+            // ============================================================
+            totalTests++;
+            System.out.println("\nTEST 11: SELECT with ORDERBY");
+            System.out.println("--------------------");
+            try {
+                // Creates a table for sorting
+                List<Attribute> attrs11 = new ArrayList<>();
+                attrs11.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
+                attrs11.add(new Attribute("val", new VarCharDefinition(false, false, 20), null));
+
+                TableSchema table11 = new TableSchema("sorttest", attrs11);
+                store.CreateTable(table11);
+
+                // Insert data completely out of order
+                ParserDML.runCommand("INSERT sorttest VALUES ( 3 \"apple\" );");
+                ParserDML.runCommand("INSERT sorttest VALUES ( 1 \"zebra\" );");
+                ParserDML.runCommand("INSERT sorttest VALUES ( 2 \"mango\" );");
+                ParserDML.runCommand("INSERT sorttest VALUES ( 4 \"apple\" );");
+
+                // Test sorting by Primary Key
+                System.out.println("Expected: [1, zebra], [2, mango], [3, apple], [4, apple]");
+                System.out.println("Actual output:");
+                ParserDML.runCommand("SELECT * FROM sorttest ORDERBY id;");
+
+                // Test sorting by standard attribute
+                System.out.println("\nExpected: [3, apple], [4, apple], [2, mango], [1, zebra]");
+                System.out.println("Actual output:");
+                ParserDML.runCommand("SELECT * FROM sorttest ORDERBY val;");
+
+                System.out.println("✓ PASSED: ORDERBY logic executed successfully");
+                passedTests++;
+            } catch (Exception e) {
+                System.out.println("✗ FAILED: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            // ============================================================
             // SUMMARY
             // ============================================================
             System.out.println("\n========================================");

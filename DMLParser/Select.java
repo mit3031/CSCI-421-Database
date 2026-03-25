@@ -1,9 +1,9 @@
 package DMLParser;
 
+import AttributeInfo.*;
 import Common.Command;
 import Catalog.Catalog;
 import Catalog.TableSchema;
-import AttributeInfo.Attribute;
 import Common.Logger;
 import Common.Page;
 import StorageManager.StorageManager;
@@ -142,12 +142,198 @@ public class Select implements Command{
         // TODO: Implement WHERE clause logic
         return new ParseResult(Select.NONEWTABLE, false);
     }
+  
+    /**
+     * Resolves the attribute name for the order by clause, handling dot notation and ambiguity
+     * @param orderSection The raw string of the attribute to sort by
+     * @param tableName The name of the table to check against
+     * @return The fully resolved attribute name as it appears in the schema
+     */
+    private String resolveAttribute(String orderSection, String tableName) throws SQLSyntaxErrorException {
+        // Clean the input
+        String targetAttr = orderSection.trim().toLowerCase();
+        if (targetAttr.endsWith(";")) {
+            targetAttr = targetAttr.substring(0, targetAttr.length() - 1).trim();
+        }
 
-    // in theory this should always return a new table
-    private ParseResult orderByParse(String orderSection, String tempTableName) throws SQLSyntaxErrorException {
-        // TODO: Implement ORDER BY logic
-        return new ParseResult(Select.NONEWTABLE, false);
+        // get schema from catalog
+        Catalog catalog = Catalog.getInstance();
+        TableSchema schema = catalog.getTable(tableName);
+        if (schema == null) {
+            throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
+        }
+
+        List<Attribute> attributes = schema.getAttributes();
+
+        // Handles the dot notation
+        if (targetAttr.contains(".")) {
+            for (Attribute attr : attributes) {
+                if (attr.getName().equals(targetAttr)) {
+                    return attr.getName();
+                }
+            }
+            throw new SQLSyntaxErrorException("Column not found: " + targetAttr);
+        }
+
+        // Handles unqualified notationn, check for ambiguity
+        else {
+            int matchCount = 0;
+            String resolvedName = null;
+
+            for (Attribute attr : attributes) {
+                String schemaAttrName = attr.getName();
+
+                // match exact name or suffix
+                if (schemaAttrName.equals(targetAttr) || schemaAttrName.endsWith("." + targetAttr)) {
+                    matchCount++;
+                    resolvedName = schemaAttrName;
+                }
+            }
+
+            if (matchCount == 0) {
+                throw new SQLSyntaxErrorException("Column not found: " + targetAttr);
+            } else if (matchCount > 1) {
+                throw new SQLSyntaxErrorException("Ambiguous column name: " + targetAttr);
+            }
+
+            return resolvedName; // 1 match found exactly
+        }
     }
+
+    /**
+     * Generates a new TableSchema for the temporary sorting table
+     * The sorting attribute is promoted to the primary key, and all other primary keys are demoted
+     * @param originalTableName The name of the table to clone
+     * @param sortAttribute The resolved name of the attribute to sort by
+     * @return A new TableSchema representing the temporary table
+     */
+    private TableSchema createTempTableSchema(String originalTableName, String sortAttribute) {
+        // generates a unique temp table name to avoid collisions
+        String uniqueId = java.util.UUID.randomUUID().toString().replace("-", "");
+        String newTableName = "$temp_order_" + uniqueId;
+
+        // getting schema
+        Catalog catalog = Catalog.getInstance();
+        TableSchema originalSchema = catalog.getTable(originalTableName);
+        List<Attribute> originalAttributes = originalSchema.getAttributes();
+        List<Attribute> newAttributes = new ArrayList<>();
+
+        // just cloning and modifying attributes
+        for (Attribute attr : originalAttributes) {
+            AttributeDefinition oldDef = attr.getDefinition();
+            boolean isSortColumn = attr.getName().equals(sortAttribute);
+
+            // The sorting column becomes the PK and cannot be null
+            // All other columns are stripped of PK status but retain their previous nullability
+            boolean newIsPrimary = isSortColumn;
+            boolean newPossibleNull = isSortColumn ? false : oldDef.getIsPossibleNull();
+
+            AttributeDefinition newDef = null;
+
+            // Instantiate the correct concrete class based on the enum type
+            switch (oldDef.getType()) {
+                case INTEGER:
+                    // IntegerDefinition is the only one that requires the type enum passed in
+                    newDef = new IntegerDefinition(oldDef.getType(), newIsPrimary, newPossibleNull);
+                    break;
+                case DOUBLE:
+                    newDef = new DoubleDefinition(newIsPrimary, newPossibleNull);
+                    break;
+                case BOOLEAN:
+                    newDef = new BooleanDefinition(newIsPrimary, newPossibleNull);
+                    break;
+                case CHAR:
+                    newDef = new CharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength());
+                    break;
+                case VARCHAR:
+                    newDef = new VarCharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength());
+                    break;
+            }
+
+            // Creates the new attribute and add it to the list
+            Attribute newAttr = new Attribute(attr.getName(), newDef, attr.getDefaultValue());
+            newAttributes.add(newAttr);
+        }
+
+        // Return the new schema
+        return new TableSchema(newTableName, newAttributes);
+    }
+
+    /**
+     * Reads all records from the source table and inserts them into the destination table
+     * insert handles sorting since the sort column is the PK
+     * @param sourceTableName The name of the original table
+     * @param destTableName The name of the new temporary sorting table
+     */
+    private void migrateData(String sourceTableName, String destTableName) throws Exception {
+        StorageManager sm = StorageManager.getStorageManager();
+        Catalog catalog = Catalog.getInstance();
+
+        // gets the first page of the source table
+        Page currentPage = sm.selectFirstPage(sourceTableName);
+        if (currentPage == null) {
+            return; // Source table is empty, nothing to migrate
+        }
+
+        // get the starting address for the destination table
+        int destAddress = catalog.getAddressOfPage(destTableName);
+
+        // Loop through all pages of the source table
+        while (currentPage != null) {
+            List<List<Object>> batch = new ArrayList<>();
+            int numRows = currentPage.getNumRows();
+
+            // extract all records from the current page
+            for (int i = 0; i < numRows; i++) {
+                // create a new arrayList to prevent memory reference issues
+                batch.add(new ArrayList<>(currentPage.getRecord(i)));
+            }
+
+            //insert the batch into the destination table
+            if (!batch.isEmpty()) {
+                destAddress = sm.insert(destTableName, batch, destAddress);
+            }
+
+            // Move to the next page if it exists
+            if (currentPage.getNextPage() != -1) {
+                currentPage = sm.select(currentPage.getNextPage(), sourceTableName);
+            } else {
+                break;
+            }
+        }
+    }
+
+    /**
+     * Executes the order by clause by generating a temporary sorted table
+     * @param orderSection The raw string containing the attribute to sort by
+     * @param tempTableName The table currently being operated on
+     * @return A ParseResult containing the new sorted table's name and a flag for cleanup
+     */
+    private ParseResult orderByParse(String orderSection, String tempTableName) throws SQLSyntaxErrorException {
+        try {
+            // Resolves the attribute name (handles dot notation and ambiguity)
+            String resolvedAttribute = resolveAttribute(orderSection, tempTableName);
+
+            // Generate the new schema with the sorting attribute as the primary Key
+            TableSchema newSchema = createTempTableSchema(tempTableName, resolvedAttribute);
+            String newTableName = newSchema.getTableName();
+
+            // create the table in the storage manager
+            StorageManager.getStorageManager().CreateTable(newSchema);
+
+            //Migrate the data
+            migrateData(tempTableName, newTableName);
+
+            // Return the new temporary table to the pipeline
+            return new ParseResult(newTableName, true);
+
+        } catch (SQLSyntaxErrorException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SQLSyntaxErrorException("Error during ORDER BY execution: " + e.getMessage());
+        }
+    }
+  
 
     /**
      * Executes a SELECT * query on the specified table
@@ -397,7 +583,7 @@ public class Select implements Command{
             throw new SQLSyntaxErrorException("Error reading from table: " + e.getMessage());
         }
     }
-
+    
     public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
         StringBuffer sb = new StringBuffer();
         for(int i = 0; i < command.length; i++) {
@@ -415,8 +601,8 @@ public class Select implements Command{
         String extractedFrom = "";
         if (this.stringExists(originalCommand, "WHERE")){
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "WHERE", true);
-        }else if (this.stringExists(originalCommand, "ORDERING BY")){
-            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERING BY", true);
+        }else if (this.stringExists(originalCommand, "ORDERBY")){
+            extractedFrom = extractMiddleSection(originalCommand, "FROM", "ORDERBY", true);
         }else{
             extractedFrom = extractMiddleSection(originalCommand, "FROM", "", true);
         }
@@ -432,8 +618,8 @@ public class Select implements Command{
             Logger.log("WHERE clause detected, running the parse logic");
             
             String extractedWhere = "";
-            if (this.stringExists(originalCommand, "ORDERING BY")){
-                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERING BY", true);
+            if (this.stringExists(originalCommand, "ORDERBY")){
+                extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "ORDERBY", true);
             }else{
                 extractedWhere = this.extractMiddleSection(originalCommand, "WHERE", "", true);
             }
@@ -448,9 +634,9 @@ public class Select implements Command{
         }
 
         // ORDERING BY SECTION (if ordering by exists)
-        if (this.stringExists(originalCommand, "ORDERING BY")){
+        if (this.stringExists(originalCommand, "ORDERBY")){
             Logger.log("Ordering clause detected");
-            String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERING BY", "", true); 
+            String extractedOrderBy = this.extractMiddleSection(originalCommand, "ORDERBY", "", true);
 
             Logger.log("running ordering parse on: " + extractedOrderBy); 
             orderByResult = this.orderByParse(extractedOrderBy, currentWorkingTable);
