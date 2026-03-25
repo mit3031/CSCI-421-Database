@@ -58,6 +58,10 @@ public class BuildTree {
                                     System.out.println("Math must be done with integers or doubles.");
                                     return null;
                                 }
+                                if (rightOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
+                                    return null;
+                                }
                                 mathRight = new AttributeNode(rightOp, table); // add check for valid attribute?
                             } else {
                                 if (rightOp.contains(".")) {
@@ -71,6 +75,10 @@ public class BuildTree {
                                 if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                         || leftOp.equals("False")) {
                                     System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                if (leftOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
                                     return null;
                                 }
                                 mathLeft = new AttributeNode(leftOp, table);
@@ -89,6 +97,10 @@ public class BuildTree {
                             } else if (firstOp.equals("True") || firstOp.equals("False")) {
                                 right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
                             } else {
+                                if (firstOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
+                                    return null;
+                                }
                                 right = new AttributeNode(firstOp, table);
                             }
                         }else {
@@ -118,6 +130,10 @@ public class BuildTree {
                                     System.out.println("Math must be done with integers or doubles.");
                                     return null;
                                 }
+                                if (rightOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
+                                    return null;
+                                }
                                 mathRight = new AttributeNode(rightOp, table);
                             } else {
                                 if (rightOp.contains(".")) {
@@ -131,6 +147,10 @@ public class BuildTree {
                                 if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                         || leftOp.equals("False")) {
                                     System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                if (leftOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
                                     return null;
                                 }
                                 mathLeft = new AttributeNode(leftOp, table);
@@ -148,6 +168,10 @@ public class BuildTree {
                             } else if (secOp.equals("True") || secOp.equals("False")) {
                                 left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                             } else {
+                                if (secOp.equals("NULL")) {
+                                    System.out.println("Null must only be checked with IS");
+                                    return null;
+                                }
                                 left = new AttributeNode(secOp, table);
                             }
                         } else {
@@ -181,6 +205,10 @@ public class BuildTree {
                                     System.out.println("Math must be done with integers or doubles.");
                                     return null;
                                 }
+                                if (rightOp.equals("NULL")) {
+                                    System.out.println("Null can only be on right side of IS");
+                                    return null;
+                                }
                                 mathRight = new AttributeNode(rightOp, table);
                             } else {
                                 if (rightOp.contains(".")) {
@@ -194,6 +222,10 @@ public class BuildTree {
                                 if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                         || leftOp.equals("False")) {
                                     System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                if (leftOp.equals("NULL")) {
+                                    System.out.println("Null can only be on right side of IS.");
                                     return null;
                                 }
                                 mathLeft = new AttributeNode(leftOp, table);
@@ -211,6 +243,10 @@ public class BuildTree {
                             } else if (secOp.equals("True") || secOp.equals("False")) {
                                 left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                             } else {
+                                if (secOp.equals("NULL")) {
+                                    System.out.println("Null can only be on right side of IS.");
+                                    return null;
+                                }
                                 left = new AttributeNode(secOp, table);
                             }
                         } else {
@@ -258,6 +294,10 @@ public class BuildTree {
                             System.out.println("Math must be done with integers or doubles.");
                             return null;
                         }
+                        if (rightOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
+                            return null;
+                        }
                         mathRight = new AttributeNode(rightOp, table);
                     } else {
                         if (rightOp.contains(".")) {
@@ -271,6 +311,10 @@ public class BuildTree {
                         if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                 || leftOp.equals("False")) {
                             System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        if (leftOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
                             return null;
                         }
                         mathLeft = new AttributeNode(leftOp, table);
@@ -289,6 +333,10 @@ public class BuildTree {
                     } else if (firstOp.equals("True") || firstOp.equals("False")) {
                         right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
                     } else {
+                        if (firstOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
+                            return null;
+                        }
                         right = new AttributeNode(firstOp, table);
                     }
                 }else {
@@ -319,6 +367,10 @@ public class BuildTree {
                             System.out.println("Math must be done with integers or doubles.");
                             return null;
                         }
+                        if (rightOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
+                            return null;
+                        }
                         mathRight = new AttributeNode(rightOp, table);
                     } else {
                         if (rightOp.contains(".")) {
@@ -332,6 +384,10 @@ public class BuildTree {
                         if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                 || leftOp.equals("False")) {
                             System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        if (leftOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
                             return null;
                         }
                         mathLeft = new AttributeNode(leftOp, table);
@@ -349,6 +405,10 @@ public class BuildTree {
                     } else if (secOp.equals("True") || secOp.equals("False")) {
                         left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                     } else {
+                        if (secOp.equals("NULL")) {
+                            System.out.println("Null must only be checked with IS");
+                            return null;
+                        }
                         left = new AttributeNode(secOp, table);
                     }
                 } else {
@@ -382,6 +442,10 @@ public class BuildTree {
                             System.out.println("Math must be done with integers or doubles.");
                             return null;
                         }
+                        if (rightOp.equals("NULL")) {
+                            System.out.println("Null can only be on right side of IS");
+                            return null;
+                        }
                         mathRight = new AttributeNode(rightOp, table);
                     } else {
                         if (rightOp.contains(".")) {
@@ -395,6 +459,10 @@ public class BuildTree {
                         if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
                                 || leftOp.equals("False")) {
                             System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        if (leftOp.equals("NULL")) {
+                            System.out.println("Null can only be on right side of IS.");
                             return null;
                         }
                         mathLeft = new AttributeNode(leftOp, table);
@@ -412,6 +480,10 @@ public class BuildTree {
                     } else if (secOp.equals("True") || secOp.equals("False")) {
                         left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                     } else {
+                        if (secOp.equals("NULL")) {
+                            System.out.println("Null can only be on right side of IS");
+                            return null;
+                        }
                         left = new AttributeNode(secOp, table);
                     }
                 } else {

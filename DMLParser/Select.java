@@ -131,7 +131,9 @@ public class Select implements Command{
         TableSchema newTable = new TableSchema("$where", catalog.getTable(tempTableName).getAttributes());
 
         IWhereOp whereTree = buildTree(whereSection, newTable);
-
+        if (whereTree == null) {
+            return new ParseResult("error", true);
+        }
         StorageManager storageManager = StorageManager.getStorageManager();
         storageManager.CreateTable(newTable);
 
@@ -203,6 +205,9 @@ public class Select implements Command{
 
             Logger.log("Running where parse on: " + extractedWhere);
             whereResult = this.whereParse(extractedWhere, currentWorkingTable);
+            if (whereResult.tableName.equals("error")) {
+                return false;
+            }
             
             if (!whereResult.tableName.equals(Select.NONEWTABLE)) {
                 currentWorkingTable = whereResult.tableName;
@@ -276,7 +281,7 @@ public class Select implements Command{
                     "Invalid select structure: SELECT * FROM <table>;"
             );
         }
-
+        //if false return false?
         parseSelect(command);
         return true; 
 
