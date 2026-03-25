@@ -6,6 +6,7 @@ import java.util.List;
 import Common.Command;
 import DMLParser.Insert;
 import DMLParser.Select;
+import StorageManager.StorageManager;
 import Common.Logger;
 
 public class ParserDML {
@@ -142,9 +143,17 @@ public class ParserDML {
     }
 
     public static void main(String[] args){
+        args = new String[] {"--debug"}; 
         Logger.initDebug(args);
+
+        String dbPath = "ParserTestDB";
+
+        try{
+            StorageManager.initDatabase(dbPath, 4096, 20);
+        }catch (Exception e){}
+
         try {
-            ParserDML.runCommand("SElect * from pupppies;");
+            ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ORDERING BY d;");
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
         }
