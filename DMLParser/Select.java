@@ -426,7 +426,7 @@ public class Select implements Command{
         }
     }
 
-    public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
+    public boolean parseSelect(String[] command) throws Exception {
         StringBuffer sb = new StringBuffer();
         for(int i = 0; i < command.length; i++) {
             sb.append(command[i] + " ");
