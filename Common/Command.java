@@ -6,5 +6,5 @@ import Catalog.Catalog;
 import java.sql.SQLSyntaxErrorException;
 
 public interface Command {
-    public boolean run(String[] command) throws SQLSyntaxErrorException;
+    public boolean run(String[] command) throws SQLSyntaxErrorException, Exception;
 }

@@ -126,9 +126,34 @@ public class Select implements Command{
     }
 
     // in theory this should always return a new table 
-    private ParseResult whereParse(String whereSection, String tempTableName){
-        buildTree(whereSection);
-        return new ParseResult(Select.NONEWTABLE, false);
+    private ParseResult whereParse(String whereSection, String tempTableName) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        TableSchema newTable = new TableSchema("$where", catalog.getTable(tempTableName).getAttributes());
+
+        IWhereOp whereTree = buildTree(whereSection, newTable);
+
+        StorageManager storageManager = StorageManager.getStorageManager();
+        storageManager.CreateTable(newTable);
+
+        //find start of old table
+        Page page = storageManager.selectFirstPage(tempTableName);
+        int address = catalog.getAddressOfPage("$where");
+        while (page != null) {
+            for (int i = 0; i < page.getNumRows(); i++) {
+                if (whereTree.evaluate(page.getRecord(i), newTable)) {
+                    address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
+                }
+                int nextPage = page.getNextPage();
+
+                if(nextPage!= -1) {
+                    page = storageManager.select(nextPage, tempTableName);
+                }
+                else{
+                    page = null;
+                }
+            }
+        }
+        return new ParseResult("$where", false);
     }
 
     // in theory this should always return a new table
@@ -136,7 +161,7 @@ public class Select implements Command{
         return new ParseResult("Woah, but I'm a new table", true);
     }
 
-    public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
+    public boolean parseSelect(String[] command) throws Exception {
         StringBuffer sb = new StringBuffer();
         for(int i = 0; i < command.length; i++) {
             sb.append(command[i] + " ");
@@ -245,7 +270,7 @@ public class Select implements Command{
     }
 
     @Override
-    public boolean run(String[] command) throws SQLSyntaxErrorException{
+    public boolean run(String[] command) throws Exception {
         if (command.length < 4){
             throw new SQLSyntaxErrorException(
                     "Invalid select structure: SELECT * FROM <table>;"

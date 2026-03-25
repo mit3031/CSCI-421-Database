@@ -1,5 +1,8 @@
 package Common.Where;
 
+import AttributeInfo.AttributeTypeEnum;
+import Catalog.TableSchema;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +22,7 @@ public class BuildTree {
         }
     }
 
-    public static IWhereOp buildTree(String whereSection) {
+    public static IWhereOp buildTree(String whereSection, TableSchema table) {
         String[] sections = whereSection.split(" ");
         Stack<String> operatorStack = new Stack<String>();
         Stack<String> operands = new Stack<String>();
@@ -49,22 +52,51 @@ public class BuildTree {
                             IOperandNode mathLeft;
                             IOperandNode mathRight;
                             if (matcher.find()) {
-                                mathRight = new AttributeNode(rightOp);
+                                //if boolean or string
+                                if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                        || rightOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathRight = new AttributeNode(rightOp, table); // add check for valid attribute?
                             } else {
-                                mathRight = new ValueNode(rightOp);
+                                if (rightOp.contains(".")) {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             matcher = pattern.matcher(leftOp);
                             if (matcher.find()) {
-                                mathLeft = new AttributeNode(leftOp);
+                                if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                        || leftOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathLeft = new AttributeNode(leftOp, table);
                             } else {
-                                mathLeft = new ValueNode(leftOp);
+                                if (leftOp.contains(".")) {
+                                    mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathLeft = new ValueNode(leftOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             right = new MathOpNode(mathLeft, mathRight, mathOp);
                         }
                         else if (matcher.find()) {
-                            right = new AttributeNode(firstOp);
+                            if (firstOp.contains("'") || firstOp.contains("\"")) {
+                                right = new ValueNode(firstOp, AttributeTypeEnum.CHAR);
+                            } else if (firstOp.equals("True") || firstOp.equals("False")) {
+                                right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
+                            } else {
+                                right = new AttributeNode(firstOp, table);
+                            }
                         }else {
-                            right = new ValueNode(firstOp);
+                            if (firstOp.contains(".")) {
+                                right = new ValueNode(firstOp, AttributeTypeEnum.DOUBLE);
+                            } else {
+                                right = new ValueNode(firstOp, AttributeTypeEnum.INTEGER);
+                            }
                         }
 
                         if (secOp.equals("+") || secOp.equals("-") || secOp.equals("*") || secOp.equals("/")) {
@@ -81,21 +113,49 @@ public class BuildTree {
                             IOperandNode mathLeft;
                             IOperandNode mathRight;
                             if (matcher.find()) {
-                                mathRight = new AttributeNode(rightOp);
+                                if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                        || rightOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathRight = new AttributeNode(rightOp, table);
                             } else {
-                                mathRight = new ValueNode(rightOp);
+                                if (rightOp.contains(".")) {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             matcher = pattern.matcher(leftOp);
                             if (matcher.find()) {
-                                mathLeft = new AttributeNode(leftOp);
+                                if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                        || leftOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathLeft = new AttributeNode(leftOp, table);
                             } else {
-                                mathLeft = new ValueNode(leftOp);
+                                if (leftOp.contains(".")) {
+                                    mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathLeft = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             left = new MathOpNode(mathLeft, mathRight, mathOp);
                         } else if (matcher.find()){
-                            left = new AttributeNode(secOp);
+                            if (secOp.contains("'") || secOp.contains("\"")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                            } else if (secOp.equals("True") || secOp.equals("False")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
+                            } else {
+                                left = new AttributeNode(secOp, table);
+                            }
                         } else {
-                            left = new ValueNode(secOp);
+                            if (secOp.contains(".")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.DOUBLE);
+                            } else {
+                                left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
+                            }
                         }
                         whereNodes.push(new RelOpNode(left, right, currentOp));
                     } else if(currentOp.equals("IS")) {
@@ -104,7 +164,7 @@ public class BuildTree {
                         Pattern pattern = Pattern.compile("[a-zA-Z]");
                         IOperandNode right;
                         IOperandNode left;
-                        right = new ValueNode(firstOp); // confirm this is valid based on finished valueNode code
+                        right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN); // confirm this is valid based on finished valueNode code
 
                         Matcher matcher = pattern.matcher(secOp);
                         if (operands.contains("+") || operands.contains("-") || operands.contains("*") || operands.contains("/")) {
@@ -116,21 +176,49 @@ public class BuildTree {
                             IOperandNode mathLeft;
                             IOperandNode mathRight;
                             if (matcher.find()) {
-                                mathRight = new AttributeNode(rightOp);
+                                if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                        || rightOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathRight = new AttributeNode(rightOp, table);
                             } else {
-                                mathRight = new ValueNode(rightOp);
+                                if (rightOp.contains(".")) {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             matcher = pattern.matcher(leftOp);
                             if (matcher.find()) {
-                                mathLeft = new AttributeNode(leftOp);
+                                if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                        || leftOp.equals("False")) {
+                                    System.out.println("Math must be done with integers or doubles.");
+                                    return null;
+                                }
+                                mathLeft = new AttributeNode(leftOp, table);
                             } else {
-                                mathLeft = new ValueNode(leftOp);
+                                if (leftOp.contains(".")) {
+                                    mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                                } else {
+                                    mathLeft = new ValueNode(leftOp, AttributeTypeEnum.INTEGER);
+                                }
                             }
                             left = new MathOpNode(mathLeft, mathRight, mathOp);
                         } else if (matcher.find()) {
-                            left = new AttributeNode(secOp);
+                            if (secOp.contains("'") || secOp.contains("\"")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                            } else if (secOp.equals("True") || secOp.equals("False")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
+                            } else {
+                                left = new AttributeNode(secOp, table);
+                            }
                         } else {
-                            left = new ValueNode(secOp);
+                            if (secOp.contains(".")) {
+                                left = new ValueNode(secOp, AttributeTypeEnum.DOUBLE);
+                            } else {
+                                left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
+                            }
                         }
                         whereNodes.push(new RelOpNode(left, right, "="));
                     }else if (currentOp.equals("AND")) {
@@ -165,22 +253,50 @@ public class BuildTree {
                     IOperandNode mathLeft;
                     IOperandNode mathRight;
                     if (matcher.find()) {
-                        mathRight = new AttributeNode(rightOp);
+                        if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                || rightOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathRight = new AttributeNode(rightOp, table);
                     } else {
-                        mathRight = new ValueNode(rightOp);
+                        if (rightOp.contains(".")) {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     matcher = pattern.matcher(leftOp);
                     if (matcher.find()) {
-                        mathLeft = new AttributeNode(leftOp);
+                        if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                || leftOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathLeft = new AttributeNode(leftOp, table);
                     } else {
-                        mathLeft = new ValueNode(leftOp);
+                        if (leftOp.contains(".")) {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     right = new MathOpNode(mathLeft, mathRight, mathOp);
                 }
                 else if (matcher.find()) {
-                    right = new AttributeNode(firstOp);
+                    if (firstOp.contains("'") || firstOp.contains("\"")) {
+                        right = new ValueNode(firstOp, AttributeTypeEnum.CHAR);
+                    } else if (firstOp.equals("True") || firstOp.equals("False")) {
+                        right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
+                    } else {
+                        right = new AttributeNode(firstOp, table);
+                    }
                 }else {
-                    right = new ValueNode(firstOp);
+                    if (firstOp.contains(".")) {
+                        right = new ValueNode(firstOp, AttributeTypeEnum.DOUBLE);
+                    } else {
+                        right = new ValueNode(firstOp, AttributeTypeEnum.INTEGER);
+                    }
                 }
 
                 if (secOp.equals("+") || secOp.equals("-") || secOp.equals("*") || secOp.equals("/")) {
@@ -198,21 +314,49 @@ public class BuildTree {
                     IOperandNode mathLeft;
                     IOperandNode mathRight;
                     if (matcher.find()) {
-                        mathRight = new AttributeNode(rightOp);
+                        if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                || rightOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathRight = new AttributeNode(rightOp, table);
                     } else {
-                        mathRight = new ValueNode(rightOp);
+                        if (rightOp.contains(".")) {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     matcher = pattern.matcher(leftOp);
                     if (matcher.find()) {
-                        mathLeft = new AttributeNode(leftOp);
+                        if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                || leftOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathLeft = new AttributeNode(leftOp, table);
                     } else {
-                        mathLeft = new ValueNode(leftOp);
+                        if (leftOp.contains(".")) {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     left = new MathOpNode(mathLeft, mathRight, mathOp);
                 } else if (matcher.find()){
-                    left = new AttributeNode(secOp);
+                    if (secOp.contains("'") || secOp.contains("\"")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                    } else if (secOp.equals("True") || secOp.equals("False")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
+                    } else {
+                        left = new AttributeNode(secOp, table);
+                    }
                 } else {
-                    left = new ValueNode(secOp);
+                    if (secOp.contains(".")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.DOUBLE);
+                    } else {
+                        left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
+                    }
                 }
                 whereNodes.push(new RelOpNode(left, right, currentOp));
             } else if(currentOp.equals("IS")) {
@@ -221,7 +365,7 @@ public class BuildTree {
                 Pattern pattern = Pattern.compile("[a-zA-Z]");
                 IOperandNode right;
                 IOperandNode left;
-                right = new ValueNode(firstOp); // confirm this is valid based on finished valueNode code
+                right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
 
                 Matcher matcher = pattern.matcher(secOp);
                 if (operands.contains("+") || operands.contains("-") || operands.contains("*") || operands.contains("/")) {
@@ -233,21 +377,49 @@ public class BuildTree {
                     IOperandNode mathLeft;
                     IOperandNode mathRight;
                     if (matcher.find()) {
-                        mathRight = new AttributeNode(rightOp);
+                        if (rightOp.contains("'") || rightOp.contains("\"") || rightOp.equals("True")
+                                || rightOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathRight = new AttributeNode(rightOp, table);
                     } else {
-                        mathRight = new ValueNode(rightOp);
+                        if (rightOp.contains(".")) {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathRight = new ValueNode(rightOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     matcher = pattern.matcher(leftOp);
                     if (matcher.find()) {
-                        mathLeft = new AttributeNode(leftOp);
+                        if (leftOp.contains("'") || leftOp.contains("\"") || leftOp.equals("True")
+                                || leftOp.equals("False")) {
+                            System.out.println("Math must be done with integers or doubles.");
+                            return null;
+                        }
+                        mathLeft = new AttributeNode(leftOp, table);
                     } else {
-                        mathLeft = new ValueNode(leftOp);
+                        if (leftOp.contains(".")) {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.DOUBLE);
+                        } else {
+                            mathLeft = new ValueNode(leftOp, AttributeTypeEnum.INTEGER);
+                        }
                     }
                     left = new MathOpNode(mathLeft, mathRight, mathOp);
                 } else if (matcher.find()) {
-                    left = new AttributeNode(secOp);
+                    if (secOp.contains("'") || secOp.contains("\"")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                    } else if (secOp.equals("True") || secOp.equals("False")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
+                    } else {
+                        left = new AttributeNode(secOp, table);
+                    }
                 } else {
-                    left = new ValueNode(secOp);
+                    if (secOp.contains(".")) {
+                        left = new ValueNode(secOp, AttributeTypeEnum.DOUBLE);
+                    } else {
+                        left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
+                    }
                 }
                 whereNodes.push(new RelOpNode(left, right, "="));
             }else if (currentOp.equals("AND")) {
@@ -275,6 +447,6 @@ public class BuildTree {
         //buildTree(" hi + j = 43294309");
         //buildTree("a > 2 AND b = 3 OR x IS NULL");
         //buildTree("a = 3 OR b = 3 AND x = 5");
-        buildTree("a + b = 3 / 200 OR b + c = 3 AND x = 5 AND name IS NULL OR 7 > 10");
+        //buildTree("a + b = 3 / 200 OR b + c = 3 AND x = 5 AND name IS NULL OR 7 > 10");
     }
 }
