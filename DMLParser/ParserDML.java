@@ -82,7 +82,11 @@ public class ParserDML {
             // Handle INSERT specially to preserve quoted strings with their quotes
             String[] insertTokens = parseInsertCommand(command);
             Command insert = new Insert();
-            insert.run(insertTokens);
+            try {
+                insert.run(insertTokens);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             return true;
         }
 
@@ -100,7 +104,11 @@ public class ParserDML {
             case "select":
                 // do select parsing
                 Command select = new Select();
-                select.run(commandSegments);
+                try {
+                    select.run(commandSegments);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
                 break;
             case "insert":
                 // Already handled above
