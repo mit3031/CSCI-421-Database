@@ -27,7 +27,8 @@ public class RelOpNode implements IWhereOp{
         Object val1 = left.getValue(tuple,tableSchema);
         Object val2 = right.getValue(tuple,tableSchema);
 
-        if(left.getType() != right.getType() &&
+
+        if(left.getType() != right.getType() && op != ComparisonOp.IS &&
          !((left.getType() == AttributeTypeEnum.VARCHAR || left.getType() == AttributeTypeEnum.CHAR) &&
                  (right.getType() == AttributeTypeEnum.VARCHAR || right.getType() == AttributeTypeEnum.CHAR))){
             throw new JottTypeMismatchException("Types " + left.getType() + " and " + right.getType() + " Do not match!");
