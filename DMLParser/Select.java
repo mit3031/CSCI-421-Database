@@ -679,14 +679,38 @@ public class Select implements Command{
 
         if (orderByResult != null && orderByResult.isTemporary) {
             Logger.log("Deleting temp order table: " + orderByResult.tableName);
-            Catalog.getInstance().dropTable(orderByResult.tableName);
+            StorageManager sm = StorageManager.getStorageManager();
+            Catalog cat = Catalog.getInstance();
+            TableSchema table = cat.getTable(orderByResult.tableName);
+            if(table == null){
+                Logger.log("Table " + orderByResult.tableName + " not found in catalog");
+                return false;
+            }
+            try {
+                sm.DropTable(table);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
         }
         
         if (whereResult != null && whereResult.isTemporary) {
             // Only delete if it's not the same as the order table (which might have just been deleted)
             if (orderByResult == null || !orderByResult.tableName.equals(whereResult.tableName)) {
                 Logger.log("Deleting temp where table: " + whereResult.tableName);
-                Catalog.getInstance().dropTable(whereResult.tableName);
+                StorageManager sm = StorageManager.getStorageManager();
+                Catalog cat = Catalog.getInstance();
+                TableSchema table = cat.getTable(whereResult.tableName);
+                if(table == null){
+                    Logger.log("Table " + whereResult.tableName + " not found in catalog");
+                    return false;
+                }
+                try {
+                    sm.DropTable(table);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }   
             }
         }
 
@@ -697,7 +721,19 @@ public class Select implements Command{
             
             if (!matchesWhere && !matchesOrder) {
                 Logger.log("Deleting temp from table: " + fromResult.tableName);
-                Catalog.getInstance().dropTable(fromResult.tableName);
+                StorageManager sm = StorageManager.getStorageManager();
+                Catalog cat = Catalog.getInstance();
+                TableSchema table = cat.getTable(fromResult.tableName);
+                if(table == null){
+                    Logger.log("Table " + fromResult.tableName + " not found in catalog");
+                    return false;
+                }
+                try {
+                    sm.DropTable(table);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
             }
         }
 
