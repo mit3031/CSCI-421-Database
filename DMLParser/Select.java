@@ -159,8 +159,8 @@ public class Select implements Command{
                 if (whereTree.evaluate(page.getRecord(i), newTable)) {
                     address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
                 }
-                nextPage = page.getNextPage();
             }
+            nextPage = page.getNextPage();
                 if(nextPage!= -1) {
                     page = storageManager.select(nextPage, tempTableName);
                 }
@@ -169,7 +169,7 @@ public class Select implements Command{
                 }
 
         }
-        return new ParseResult("$where", false);
+        return new ParseResult("$where", true);
     }
 
     // in theory this should always return a new table
