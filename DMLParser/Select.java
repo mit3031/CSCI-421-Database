@@ -134,7 +134,7 @@ public class Select implements Command{
             String tableName = tableNames.get(i).trim();
             tableNames.set(i, tableName);
             if (!catalog.tableExists(tableName)){
-                throw new SQLSyntaxErrorException("TableZ: " + tableName + " does not exist");
+                throw new SQLSyntaxErrorException("Table: " + tableName + " does not exist");
             }
         }
 
@@ -211,8 +211,10 @@ public class Select implements Command{
                 }
 
             }
-
-            tableNames.remove(0);
+            String usedTable = tableNames.remove(0);
+            if(tableNames.get(0).contains("$temp")){
+                storageManager.DropTable(catalog.getTable(usedTable));
+            }
             tableNames.set(0, tempTable.getTableName());
             tableNameCounter++;
 
@@ -590,7 +592,13 @@ public class Select implements Command{
             
             if (!matchesWhere && !matchesOrder) {
                 Logger.log("Deleting temp from table: " + fromResult.tableName);
-                Catalog.getInstance().dropTable(fromResult.tableName);
+                try{
+                    StorageManager.getStorageManager().DropTable(Catalog.getInstance().getTable(fromResult.tableName));
+                } catch (Exception e){
+                    System.out.println(e.getMessage());
+                }
+
+
             }
         }
 
