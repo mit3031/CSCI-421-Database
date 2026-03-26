@@ -153,20 +153,21 @@ public class Select implements Command{
         //find start of old table
         Page page = storageManager.selectFirstPage(tempTableName);
         int address = catalog.getAddressOfPage("$where");
+        int nextPage = -1;
         while (page != null) {
             for (int i = 0; i < page.getNumRows(); i++) {
                 if (whereTree.evaluate(page.getRecord(i), newTable)) {
                     address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
                 }
-                int nextPage = page.getNextPage();
-
+                nextPage = page.getNextPage();
+            }
                 if(nextPage!= -1) {
                     page = storageManager.select(nextPage, tempTableName);
                 }
                 else{
                     page = null;
                 }
-            }
+
         }
         return new ParseResult("$where", false);
     }
