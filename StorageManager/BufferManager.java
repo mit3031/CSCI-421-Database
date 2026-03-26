@@ -137,6 +137,9 @@ public class BufferManager {
                 int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
                 if(currentPage.isEmpty())
                 {
+                    if(availableSpace < totalRecordSize){
+                        throw new Exception("Page size too small for this entry for records of this size please create a new database with a larger page size");
+                    }
                     currentPage.addRecord(record);
                     inserted = true;
                     currentPage.setNumRows(currentPage.getNumRows() + 1);
