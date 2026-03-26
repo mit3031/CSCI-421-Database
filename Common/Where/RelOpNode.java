@@ -43,8 +43,9 @@ public class RelOpNode implements IWhereOp{
                 double d2 = (double) val2;
                 return op.compare(d1,d2);
             case BOOLEAN:
-                //todo
-                return false;
+                boolean b1 = (boolean) val1;
+                boolean b2 = (boolean) val2;
+                return op.compare(b1, b2);
             case VARCHAR:
             case CHAR:
                 String s1 = (String) val1;

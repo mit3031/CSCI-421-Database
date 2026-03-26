@@ -35,6 +35,10 @@ public enum ComparisonOp {
         return switch (this) {
             case EQUAL -> i1 == i2;
             case NOT_EQUAL -> i1 != i2;
+            case LESS_THAN -> !i1 && i2;
+            case LESS_THAN_EQUAL -> !i1 || i2;
+            case GREATER_THAN -> i1 && !i2;
+            case GREATER_THAN_EQUAL -> i1 || !i2;
             default -> false;
             //is this one needed?
         };
