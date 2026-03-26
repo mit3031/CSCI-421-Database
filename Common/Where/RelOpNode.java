@@ -34,22 +34,35 @@ public class RelOpNode implements IWhereOp{
             throw new JottTypeMismatchException("Types " + left.getType() + " and " + right.getType() + " Do not match!");
         }
 
+        //the is Checks are very jank here.
         switch(left.getType()){
             case INTEGER:
                 int v1 = (int)val1;
+                if (op == ComparisonOp.IS){
+                    return op.compare(v1,v1);
+                }
                 int v2 = (int)val2;
                 return op.compare(v1,v2);
             case DOUBLE:
                 double d1 = (double) val1;
+                if (op == ComparisonOp.IS){
+                    return op.compare(d1,d1);
+                }
                 double d2 = (double) val2;
                 return op.compare(d1,d2);
             case BOOLEAN:
                 boolean b1 = (boolean) val1;
+                if (op == ComparisonOp.IS){
+                    return op.compare(b1,b1);
+                }
                 boolean b2 = (boolean) val2;
                 return op.compare(b1, b2);
             case VARCHAR:
             case CHAR:
                 String s1 = (String) val1;
+                if (op == ComparisonOp.IS){
+                    return op.compare(s1,s1);
+                }
                 String s2 = (String) val2;
                 return op.compare(s1, s2);
             default:
