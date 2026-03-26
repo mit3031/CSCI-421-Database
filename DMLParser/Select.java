@@ -264,43 +264,55 @@ public class Select implements Command{
      * insert handles sorting since the sort column is the PK
      * @param sourceTableName The name of the original table
      * @param destTableName The name of the new temporary sorting table
+     * @param sortAttribute The name of the column to sort the records by
      */
-    private void migrateData(String sourceTableName, String destTableName) throws Exception {
+    private void migrateData(String sourceTableName, String destTableName, String sortAttribute) throws Exception {
         StorageManager sm = StorageManager.getStorageManager();
         Catalog catalog = Catalog.getInstance();
 
-        // gets the first page of the source table
-        Page currentPage = sm.selectFirstPage(sourceTableName);
-        if (currentPage == null) {
-            return; // Source table is empty, nothing to migrate
+        // Finds the index of the column we want to sort by
+        TableSchema schema = catalog.getTable(sourceTableName);
+        int sortColIndex = -1;
+        for (int i = 0; i < schema.getAttributes().size(); i++) {
+            if (schema.getAttributes().get(i).getName().equals(sortAttribute)) {
+                sortColIndex = i;
+                break;
+            }
         }
 
-        // get the starting address for the destination table
-        int destAddress = catalog.getAddressOfPage(destTableName);
+        // reads all records into memory
+        List<List<Object>> allRecords = new ArrayList<>();
+        Page currentPage = sm.selectFirstPage(sourceTableName);
 
-        // Loop through all pages of the source table
         while (currentPage != null) {
-            List<List<Object>> batch = new ArrayList<>();
-            int numRows = currentPage.getNumRows();
-
-            // extract all records from the current page
-            for (int i = 0; i < numRows; i++) {
-                // create a new arrayList to prevent memory reference issues
-                batch.add(new ArrayList<>(currentPage.getRecord(i)));
+            for (int i = 0; i < currentPage.getNumRows(); i++) {
+                allRecords.add(new ArrayList<>(currentPage.getRecord(i)));
             }
-
-            //insert the batch into the destination table
-            if (!batch.isEmpty()) {
-                destAddress = sm.insert(destTableName, batch, destAddress);
-            }
-
-            // Move to the next page if it exists
             if (currentPage.getNextPage() != -1) {
                 currentPage = sm.select(currentPage.getNextPage(), sourceTableName);
             } else {
                 break;
             }
         }
+
+        if (allRecords.isEmpty()) return;
+
+        // Sorts the records in memory
+        final int colIndex = sortColIndex;
+        allRecords.sort((row1, row2) -> {
+            Object val1 = row1.get(colIndex);
+            Object val2 = row2.get(colIndex);
+
+            if (val1 == null && val2 == null) return 0;
+            if (val1 == null) return -1; // Nulls come first
+            if (val2 == null) return 1;
+
+            return ((Comparable<Object>) val1).compareTo(val2);
+        });
+
+        // insert the newly sorted batch into the destination table
+        int destAddress = catalog.getAddressOfPage(destTableName);
+        sm.insert(destTableName, allRecords, destAddress);
     }
 
     /**
@@ -322,7 +334,7 @@ public class Select implements Command{
             StorageManager.getStorageManager().CreateTable(newSchema);
 
             //Migrate the data
-            migrateData(tempTableName, newTableName);
+            migrateData(tempTableName, newTableName, resolvedAttribute);
 
             // Return the new temporary table to the pipeline
             return new ParseResult(newTableName, true);
