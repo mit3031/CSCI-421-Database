@@ -57,7 +57,7 @@ public enum ComparisonOp {
           case "<=" -> ComparisonOp.LESS_THAN_EQUAL;
           case ">" -> ComparisonOp.GREATER_THAN;
           case ">=" -> ComparisonOp.GREATER_THAN_EQUAL;
-          case "==" -> ComparisonOp.EQUAL;
+          case "=" -> ComparisonOp.EQUAL;
           case "<>" -> ComparisonOp.NOT_EQUAL;
             default -> throw new BadOperatorException("Relative operator " + operation + " Not Found!");
         };
