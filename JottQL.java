@@ -40,7 +40,12 @@ public class JottQL {
     private static void shutdown() throws IOException {
         System.out.println("Shutting down the database...");
         StorageManager storageManager = StorageManager.getStorageManager();
-        storageManager.shutdown();
+        try {
+            storageManager.shutdown();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Super fail on shutdown");
+        }
         System.out.println("Database shutdown complete");
     }
 
