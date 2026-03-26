@@ -141,7 +141,7 @@ public class SelectOrderByTest {
             // ========== Create AxB cartesian product simulation table ==========
             System.out.println("=== Creating AxB Table (Cartesian Product Simulation) ===");
             List<Attribute> axbAttributes = new ArrayList<>();
-            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
+            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
             axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
             axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
             axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50)));

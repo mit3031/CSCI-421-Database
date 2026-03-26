@@ -151,7 +151,7 @@ public class SelectParseTest {
             // where A has (x, y) and B has (x, q)
             // Result would have qualified attributes: a.x, a.y, b.x, b.q
             List<Attribute> axbAttributes = new ArrayList<>();
-            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
+            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
             axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
             axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
             axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50)));
