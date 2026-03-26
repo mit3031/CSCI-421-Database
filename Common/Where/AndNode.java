@@ -22,7 +22,7 @@ public class AndNode implements IWhereOp{
     @Override
     public boolean evaluate(ArrayList<Object> tuple, TableSchema tableSchema) {
         if(left != null && right != null){
-            return left.evaluate(tuple,tableSchema) || right.evaluate(tuple,tableSchema);
+            return left.evaluate(tuple,tableSchema) && right.evaluate(tuple,tableSchema);
         }
         //todo maybe throw an exception here, tree not defined
         return false;

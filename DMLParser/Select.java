@@ -513,6 +513,8 @@ public class Select implements Command{
 
         if (orderByResult != null && orderByResult.isTemporary) {
             Logger.log("Deleting temp order table: " + orderByResult.tableName);
+            TableSchema temp = Catalog.getInstance().getTable(orderByResult.tableName);
+            StorageManager.getStorageManager().DropTable(temp);
             Catalog.getInstance().dropTable(orderByResult.tableName);
         }
         
@@ -520,6 +522,8 @@ public class Select implements Command{
             // Only delete if it's not the same as the order table (which might have just been deleted)
             if (orderByResult == null || !orderByResult.tableName.equals(whereResult.tableName)) {
                 Logger.log("Deleting temp where table: " + whereResult.tableName);
+                TableSchema temp = Catalog.getInstance().getTable(whereResult.tableName);
+                StorageManager.getStorageManager().DropTable(temp);
                 Catalog.getInstance().dropTable(whereResult.tableName);
             }
         }
@@ -531,6 +535,8 @@ public class Select implements Command{
             
             if (!matchesWhere && !matchesOrder) {
                 Logger.log("Deleting temp from table: " + fromResult.tableName);
+                TableSchema temp = Catalog.getInstance().getTable(fromResult.tableName);
+                StorageManager.getStorageManager().DropTable(temp);
                 Catalog.getInstance().dropTable(fromResult.tableName);
             }
         }
