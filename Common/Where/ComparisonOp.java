@@ -11,7 +11,11 @@ public enum ComparisonOp {
     IS;
 
 
-    public boolean compare(Integer i1, int i2) {
+    public boolean compare(Integer i1, Integer i2) {
+        if (this != IS && (i1 == null || i2 == null)) {
+            return false;
+        }
+
         return switch (this) {
             case LESS_THAN -> i1 < i2;
             case LESS_THAN_EQUAL -> i1 <= i2;
@@ -19,11 +23,14 @@ public enum ComparisonOp {
             case GREATER_THAN_EQUAL -> i1 >= i2;
             case EQUAL -> i1 == i2;
             case NOT_EQUAL -> i1 != i2;
-            case IS -> i1 != null;
+            case IS -> i1 == null;
         };
     }
 
-    public boolean compare(Double i1, double i2) {
+    public boolean compare(Double i1, Double i2) {
+        if (this != IS && (i1 == null || i2 == null)) {
+            return false;
+        }
         return switch (this) {
             case LESS_THAN -> i1 < i2;
             case LESS_THAN_EQUAL -> i1 <= i2;
@@ -31,11 +38,14 @@ public enum ComparisonOp {
             case GREATER_THAN_EQUAL -> i1 >= i2;
             case EQUAL -> i1 == i2;
             case NOT_EQUAL -> i1 != i2;
-            case IS -> i1 != null;
+            case IS -> i1 == null;
         };
     }
 
-    public boolean compare(Boolean i1, boolean i2) {
+    public boolean compare(Boolean i1, Boolean i2) {
+        if (this != IS && (i1 == null || i2 == null)) {
+            return false;
+        }
         return switch (this) {
             case EQUAL -> i1 == i2;
             case NOT_EQUAL -> i1 != i2;
@@ -43,13 +53,16 @@ public enum ComparisonOp {
             case LESS_THAN_EQUAL -> !i1 || i2;
             case GREATER_THAN -> i1 && !i2;
             case GREATER_THAN_EQUAL -> i1 || !i2;
-            case IS -> i1 != null;
+            case IS -> i1 == null;
             default -> false;
             //is this one needed?
         };
     }
 
     public boolean compare(String i1, String i2) {
+        if (this != IS && (i1 == null || i2 == null)) {
+            return false;
+        }
         return switch (this) {
             case LESS_THAN -> i1.compareTo(i2) <0;
             case LESS_THAN_EQUAL -> i1.compareTo(i2) <=0;
@@ -57,7 +70,7 @@ public enum ComparisonOp {
             case GREATER_THAN_EQUAL ->i1.compareTo(i2) >=0;
             case EQUAL -> i1.equals(i2);
             case NOT_EQUAL -> ! i1.equals(i2);
-            case IS -> i1 != null;
+            case IS -> i1 == null;
         };
     }
 
