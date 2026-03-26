@@ -17,6 +17,15 @@ public class ValueNode implements IOperandNode{
 
     @Override
     public Object getValue(List<Object> tuple, TableSchema tableSchema) {
+        if (type == AttributeTypeEnum.INTEGER){
+            return Integer.parseInt((String) value);
+        }
+        else if (type == AttributeTypeEnum.DOUBLE){
+            return Double.parseDouble((String) value);
+        }
+        else if (type == AttributeTypeEnum.BOOLEAN){
+            return Boolean.parseBoolean((String) value);
+        }
         return value;
     }
 
