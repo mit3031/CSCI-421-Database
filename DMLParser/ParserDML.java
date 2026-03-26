@@ -30,9 +30,11 @@ public class ParserDML {
                 // Start of quoted string
                 inQuotes = true;
                 quoteChar = c;
+                current.append(c);
             } else if (inQuotes && c == quoteChar) {
                 // End of quoted string
                 inQuotes = false;
+                current.append(c);
                 tokens.add(current.toString());
                 current = new StringBuilder();
             } else if (inQuotes) {
