@@ -93,7 +93,7 @@ public class BuildTree {
                         }
                         else if (matcher.find()) {
                             if (firstOp.contains("'") || firstOp.contains("\"")) {
-                                right = new ValueNode(firstOp, AttributeTypeEnum.CHAR);
+                                right = new ValueNode(firstOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                             } else if (firstOp.equals("True") || firstOp.equals("False")) {
                                 right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
                             } else {
@@ -164,7 +164,7 @@ public class BuildTree {
                             left = new MathOpNode(mathLeft, mathRight, mathOp);
                         } else if (matcher.find()){
                             if (secOp.contains("'") || secOp.contains("\"")) {
-                                left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                                left = new ValueNode(secOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                             } else if (secOp.equals("True") || secOp.equals("False")) {
                                 left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                             } else {
@@ -239,7 +239,7 @@ public class BuildTree {
                             left = new MathOpNode(mathLeft, mathRight, mathOp);
                         } else if (matcher.find()) {
                             if (secOp.contains("'") || secOp.contains("\"")) {
-                                left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                                left = new ValueNode(secOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                             } else if (secOp.equals("True") || secOp.equals("False")) {
                                 left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                             } else {
@@ -329,7 +329,7 @@ public class BuildTree {
                 }
                 else if (matcher.find()) {
                     if (firstOp.contains("'") || firstOp.contains("\"")) {
-                        right = new ValueNode(firstOp, AttributeTypeEnum.CHAR);
+                        right = new ValueNode(firstOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                     } else if (firstOp.equals("True") || firstOp.equals("False")) {
                         right = new ValueNode(firstOp, AttributeTypeEnum.BOOLEAN);
                     } else {
@@ -401,7 +401,7 @@ public class BuildTree {
                     left = new MathOpNode(mathLeft, mathRight, mathOp);
                 } else if (matcher.find()){
                     if (secOp.contains("'") || secOp.contains("\"")) {
-                        left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                        left = new ValueNode(secOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                     } else if (secOp.equals("True") || secOp.equals("False")) {
                         left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                     } else {
@@ -476,7 +476,7 @@ public class BuildTree {
                     left = new MathOpNode(mathLeft, mathRight, mathOp);
                 } else if (matcher.find()) {
                     if (secOp.contains("'") || secOp.contains("\"")) {
-                        left = new ValueNode(secOp, AttributeTypeEnum.CHAR);
+                        left = new ValueNode(secOp.replaceAll("\"", "").replaceAll("'", ""), AttributeTypeEnum.CHAR);
                     } else if (secOp.equals("True") || secOp.equals("False")) {
                         left = new ValueNode(secOp, AttributeTypeEnum.BOOLEAN);
                     } else {
