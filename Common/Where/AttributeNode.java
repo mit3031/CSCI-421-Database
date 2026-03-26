@@ -11,6 +11,7 @@ public class AttributeNode implements IOperandNode{
 
     private String attributeName;
     private AttributeTypeEnum type;
+    private String unqualifiedAttrName;
     /**
      * Creates an Attribute node
      * @param attributeName Name of the attribute
@@ -18,10 +19,14 @@ public class AttributeNode implements IOperandNode{
      */
     public AttributeNode(String attributeName, TableSchema tableSchema)
     {
-        this.attributeName = attributeName;
+        this.attributeName = attributeName.toLowerCase();
         boolean foundUnqualified = false;
         boolean dupeUnqualified = false;
         boolean foundQualified = false;
+        unqualifiedAttrName = this.attributeName;
+        if (unqualifiedAttrName.contains(".")){
+            unqualifiedAttrName = unqualifiedAttrName.substring(unqualifiedAttrName.indexOf(".") + 1);
+        }
         Attribute temp = null;
         for (Attribute a : tableSchema.getAttributes()){
             String name = a.getName();
@@ -30,12 +35,12 @@ public class AttributeNode implements IOperandNode{
                 unqualifiedName = unqualifiedName.substring(unqualifiedName.indexOf(".") + 1);
             }
             //qualified name guaranteed to be unique
-            if(name.equals(attributeName)){
+            if(name.equals(this.attributeName)){
                 foundQualified = true;
                 temp = a;
                 break;
             }
-            if(unqualifiedName.equals(attributeName)){
+            if(unqualifiedName.equals(unqualifiedAttrName)){
                 // two attributes, when unqualified become issue
                 dupeUnqualified = foundUnqualified;
                 foundUnqualified = true;
@@ -43,11 +48,11 @@ public class AttributeNode implements IOperandNode{
             }
         }
         if (temp == null){
-            throw new JottUnfoundAttributeException("Attribute name " + attributeName + " Not Found!");
+            throw new JottUnfoundAttributeException("Attribute name " + this.attributeName + " Not Found!");
         }
         //check if there was a duplicate unqualified And no qualified found
         if (!foundQualified && dupeUnqualified){
-            throw new JottAmbiguousNameException("Attribute name " + attributeName + " Is ambiguous!");
+            throw new JottAmbiguousNameException("Attribute name " + this.attributeName + " Is ambiguous!");
         }
         type = temp.getDefinition().getType();
 
@@ -73,7 +78,7 @@ public class AttributeNode implements IOperandNode{
                 break;
             }
             //unqualified does not break loop because need to check duplicate, or qualified match could be later
-            else if(unqualifiedName.equals(attributeName)) {
+            else if(unqualifiedName.equals(unqualifiedAttrName)) {
                 dupeUnqualified = foundUnqualified;
                 foundUnqualified = true;
                 attributeIndex = i;

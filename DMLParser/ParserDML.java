@@ -107,6 +107,7 @@ public class ParserDML {
                 try {
                     select.run(commandSegments);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     throw new RuntimeException(e);
                 }
                 break;
