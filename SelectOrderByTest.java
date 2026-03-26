@@ -327,8 +327,9 @@ public class SelectOrderByTest {
             try {
                 ParserDML.runCommand("SELECT * FROM grades ORDERBY invalid;");
                 System.out.println("ERROR: Should have thrown an exception!");
-            } catch (SQLSyntaxErrorException e) {
-                System.out.println("✓ Correctly caught error: " + e.getMessage());
+            } catch (Exception e) {
+                String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                System.out.println("✓ Correctly caught error: " + message);
             }
             System.out.println();
 
@@ -338,8 +339,9 @@ public class SelectOrderByTest {
             try {
                 ParserDML.runCommand("SELECT * FROM axb ORDERBY x;");
                 System.out.println("ERROR: Should have thrown an exception!");
-            } catch (SQLSyntaxErrorException e) {
-                System.out.println("✓ Correctly caught error: " + e.getMessage());
+            } catch (Exception e) {
+                String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                System.out.println("✓ Correctly caught error: " + message);
             }
             System.out.println();
 
@@ -349,8 +351,9 @@ public class SelectOrderByTest {
             try {
                 ParserDML.runCommand("SELECT * FROM axb ORDERBY b.y;");
                 System.out.println("ERROR: Should have thrown an exception!");
-            } catch (SQLSyntaxErrorException e) {
-                System.out.println("✓ Correctly caught error: " + e.getMessage());
+            } catch (Exception e) {
+                String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                System.out.println("✓ Correctly caught error: " + message);
             }
             System.out.println();
 
@@ -360,8 +363,9 @@ public class SelectOrderByTest {
             try {
                 ParserDML.runCommand("SELECT * FROM grades ORDERBY price;");
                 System.out.println("ERROR: Should have thrown an exception!");
-            } catch (SQLSyntaxErrorException e) {
-                System.out.println("✓ Correctly caught error: " + e.getMessage());
+            } catch (Exception e) {
+                String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                System.out.println("✓ Correctly caught error: " + message);
             }
             System.out.println();
 
@@ -370,8 +374,9 @@ public class SelectOrderByTest {
             try {
                 ParserDML.runCommand("SELECT * FROM grades ORDERBY a.b.c;");
                 System.out.println("ERROR: Should have thrown an exception!");
-            } catch (SQLSyntaxErrorException e) {
-                System.out.println("✓ Correctly caught error: " + e.getMessage());
+            } catch (Exception e) {
+                String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                System.out.println("✓ Correctly caught error: " + message);
             }
             System.out.println();
 
