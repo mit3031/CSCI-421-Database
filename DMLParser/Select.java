@@ -167,8 +167,24 @@ public class Select implements Command{
 
         // Handles the dot notation
         if (targetAttr.contains(".")) {
+            String[] parts = targetAttr.split("\\.");
+            if (parts.length != 2) {
+                throw new SQLSyntaxErrorException("Invalid qualified attribute name: " + targetAttr);
+            }
+
+            String reqTable = parts[0];
+            String reqAttr = parts[1];
+
             for (Attribute attr : attributes) {
-                if (attr.getName().equals(targetAttr)) {
+                String schemaAttrName = attr.getName().toLowerCase();
+
+                //  Match exactly for cartesian products where schema name is actually table.col
+                if (schemaAttrName.equals(targetAttr)) {
+                    return attr.getName();
+                }
+                // Match unqualified schema name for single tables where schema is col but user typed table.col
+                else if (schemaAttrName.equals(reqAttr) &&
+                        (tableName.equalsIgnoreCase(reqTable) || tableName.startsWith("$temp_"))) {
                     return attr.getName();
                 }
             }
@@ -184,7 +200,7 @@ public class Select implements Command{
                 String schemaAttrName = attr.getName();
 
                 // match exact name or suffix
-                if (schemaAttrName.equals(targetAttr) || schemaAttrName.endsWith("." + targetAttr)) {
+                if (schemaAttrName.toLowerCase().equals(targetAttr) || schemaAttrName.toLowerCase().endsWith("." + targetAttr)) {
                     matchCount++;
                     resolvedName = schemaAttrName;
                 }
