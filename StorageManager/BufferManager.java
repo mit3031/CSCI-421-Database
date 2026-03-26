@@ -92,6 +92,14 @@ public class BufferManager {
         return page;
     }
 
+    /**
+     * Inserts a row(s) into the proper page based on primary key order. This is a brute-force approach
+     * @param tableName the name of the table to insert the row(s) into
+     * @param rows the row(s) to be inserted
+     * @param pageAddress the address of the first page in the table
+     * @return Address of the page the last row was inserted into
+     * @throws Exception
+     */
     public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(tableName);
@@ -233,6 +241,85 @@ public class BufferManager {
         //}
         return currentPage.getPageAddress();
     }
+
+    /**
+     * This insert is used for cartesian product since the two tables being combined should already be in their primary-key
+     * order we can just add rows one after another rather than trying to sort them
+     * @param tableName the name of the table to insert the row(s) into
+     * @param rows the row(s) to be inserted
+     * @param pageAddress the address of the first page in the table
+     * @return Address of the page the last row was inserted into
+     * @throws Exception
+     */
+    public Integer heapInsert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        TableSchema table = catalog.getTable(tableName);
+
+        if (table == null) {
+            throw new Exception("Table does not exist: " + tableName);
+        }
+
+        Page currentPage = select(pageAddress, tableName);
+
+        for (List<Object> row : rows) {
+            // Convert List<Object> to ArrayList<Object>
+            ArrayList<Object> record = new ArrayList<>(row);
+
+            // Calculate the size needed for this record (data + directory overhead)
+            int recordSize = calculateRecordSize(table, record);
+            int directoryOverhead = Integer.BYTES * 2; // offset and length in directory
+            int totalRecordSize = recordSize + directoryOverhead;
+            int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
+
+            // If not enough space, we need a new page
+            if (availableSpace < totalRecordSize) {
+                // Write current page before moving to a new one
+                //if (currentPage.getModified()) {
+                //writePage(currentPage);
+                //currentPage.SetModified(false);
+                //}
+
+                // Get a new page
+                int newPageAddress;
+                if (catalog.hasFreePages()) {
+                    newPageAddress = catalog.getFirstFreePage();
+                    catalog.removeFirstFreePage();
+                } else {
+                    // Allocate a new page at the end
+                    newPageAddress = catalog.getFirstFreeAddress();
+                }
+
+                // Mark current page as having a next page
+                currentPage.setNextPage(newPageAddress);
+                currentPage.SetModified(true);
+                //let buffer handle this
+                //writePage(currentPage);
+                //currentPage.SetModified(false);
+
+                // Create the new page
+                newPage(newPageAddress, tableName);
+                currentPage = select(newPageAddress, tableName);
+            }
+
+            // Add record to current page
+            currentPage.addRecord(record);
+            currentPage.setNumRows(currentPage.getNumRows() + 1);
+
+            // Update free space pointers
+            //currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
+            //currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
+            currentPage.SetModified(true);
+            currentPage.updateLastUsed();
+        }
+
+        // Write the final page
+        //if (currentPage.getModified()) {
+        //writePage(currentPage);
+        //currentPage.SetModified(false);
+        //}
+        return currentPage.getPageAddress();
+    }
+
 
     /**
      * Splits the current page into two with half the records staying in the current page and the half the records into

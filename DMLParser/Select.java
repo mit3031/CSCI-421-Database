@@ -120,21 +120,106 @@ public class Select implements Command{
     // If a new table is generated return the new table name, true
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
-    private ParseResult fromParse(String fromSection) throws SQLSyntaxErrorException {
-        // For now, just handle simple single-table case
-        // TODO: Later implement cartesian product for multiple tables
+    private ParseResult fromParse(String fromSection) throws Exception {
         // When cartesian product is implemented, create temp table with qualified attribute names
         // Example: FROM A, B where A has (x,y) and B has (x,q) -> create temp table with (A.x, A.y, B.x, B.q)
-        String tableName = fromSection.trim();
-        
-        // Check if table exists
+        String TEMP_TABLE_NAME = "$temp";
         Catalog catalog = Catalog.getInstance();
-        if (!catalog.tableExists(tableName)){
-            throw new SQLSyntaxErrorException("Table: " + tableName + " does not exist");
+        StorageManager storageManager = StorageManager.getStorageManager();
+
+        ArrayList<String> tableNames = new ArrayList<>(Arrays.asList(fromSection.split(",")));
+
+        // Check if tables exist and ensure there is no whitespace attached
+        for ( int i = 0; i < tableNames.size(); i++ ) {
+            String tableName = tableNames.get(i).trim();
+            tableNames.set(i, tableName);
+            if (!catalog.tableExists(tableName)){
+                throw new SQLSyntaxErrorException("TableZ: " + tableName + " does not exist");
+            }
         }
-        
-        // Single table, no cartesian product needed - return original table
-        return new ParseResult(tableName, false); 
+
+        // Single table so just return original table
+        if (tableNames.size() == 1){
+            return new ParseResult(tableNames.get(0), false);
+        }
+
+        // Multiple tables need to do a cartesian product
+
+        // while (length of table names > 1)
+        // get first two tables
+        // create a list of combined attributes
+            // Rename attriubtes to be tablename.attrname as long as current attrname doesn't contian a '.'
+            // Add them into  alist together
+        // create temp table
+        // for rows in t1
+            // for rows in t2
+                // combine t1 row and t2 row, add to table
+        // remove first element
+        // make second element equal to new temp table
+
+        int tableNameCounter = 0;
+        while (tableNames.size() > 1) {
+            TableSchema table1 = catalog.getTable(tableNames.get(0));
+            TableSchema table2 = catalog.getTable(tableNames.get(1));
+            List<Attribute> newAttributes = new ArrayList<>();
+
+            //Lambda statement to rename attributes and add them to the new list of attributes
+            table1.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (attr.getName().contains(".")) ? table1.getTableName()+"."+attr.getName() : attr.getName())));
+            table2.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (attr.getName().contains(".")) ? table2.getTableName()+"."+attr.getName() : attr.getName())));
+
+            // Create a temporary table, tableNameCounter is used in the case that there are 3 or more tables being
+            // combined and there will be an instance where more than one temp table will need to be created
+            TableSchema tempTable = new TableSchema(TEMP_TABLE_NAME + tableNameCounter, newAttributes);
+            storageManager.CreateTable(tempTable);
+
+            // Get the first page for the two tables
+            Page table1Page = storageManager.selectFirstPage(table1.getTableName());
+
+            int address = catalog.getAddressOfPage(tempTable.getTableName());
+
+            // Perform cartesian product and insert them into the temporary table
+            while (true){
+
+                for (int i = 0; i < table1Page.getNumRows(); i++){
+                    Page table2Page = storageManager.selectFirstPage(table2.getTableName());
+
+                    // for each row in table 1 add every row from table 2
+                    while(true) {
+                        List<List<Object>> newRows = new ArrayList<>();
+                        for (int j = 0; j < table2Page.getNumRows(); j++) {
+                            List<Object> newRow = new ArrayList<>();
+                            newRow.addAll(table1Page.getRecord(i));
+                            newRow.addAll(table2Page.getRecord(j));
+                            newRows.add(newRow);
+                        }
+
+                        // Insert rows in batches, a batch is one row from table1 combined with all rows from table2 in one page
+                        address = storageManager.heapInsert(tempTable.getTableName(), newRows, address);
+                        //if there is a new page move to it, otherwise move back to the outside table
+                        if (table2Page.getNextPage() != -1) {
+                            table2Page = storageManager.select(table2Page.getNextPage(), table2.getTableName());
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if(table1Page.getNextPage() != -1){
+                    table1Page = storageManager.select(table1Page.getNextPage(), table1.getTableName());
+                } else {
+                    break;
+                }
+
+            }
+
+            tableNames.remove(0);
+            tableNames.set(0, tempTable.getTableName());
+            tableNameCounter++;
+
+        }
+
+
+        return new ParseResult(tableNames.get(0), true);
     }
 
     // in theory this should always return a new table 
@@ -422,7 +507,13 @@ public class Select implements Command{
         }
 
         Logger.log("Running the from section: " + extractedFrom);
-        fromResult = this.fromParse(extractedFrom);
+
+        // todo needs an overall try catch this was just so it would compile and run
+        try{fromResult = this.fromParse(extractedFrom);} catch (Exception e){
+            System.out.println("Caught from the from: ");
+            e.printStackTrace(System.err);
+        }
+
         // every command must have a FROM clause
         String currentWorkingTable = fromResult.tableName;
         Logger.log("Working table from FROM: " + currentWorkingTable);
