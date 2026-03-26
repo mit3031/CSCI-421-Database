@@ -256,7 +256,7 @@ public class BuildTree {
                                 left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
                             }
                         }
-                        whereNodes.push(new RelOpNode(left, right, "="));
+                        whereNodes.push(new RelOpNode(left, right, currentOp));
                     }else if (currentOp.equals("AND")) {
                         IWhereOp right = whereNodes.pop();
                         IWhereOp left = whereNodes.pop();
@@ -493,7 +493,7 @@ public class BuildTree {
                         left = new ValueNode(secOp, AttributeTypeEnum.INTEGER);
                     }
                 }
-                whereNodes.push(new RelOpNode(left, right, "="));
+                whereNodes.push(new RelOpNode(left, right, currentOp));
             }else if (currentOp.equals("AND")) {
                 IWhereOp right = whereNodes.pop();
                 IWhereOp left = whereNodes.pop();
