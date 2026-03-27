@@ -84,6 +84,12 @@ public class ParserDML {
             Command insert = new Insert();
             insert.run(insertTokens);
             return true;
+        } else if (commandLower.startsWith("update")) {
+            // Handle update specially to preserve quotes for the SET clause
+            Command update = new Update();
+            // Passing the raw command inside an arrau
+            update.run(new String[]{command});
+            return true;
         }
 
         // Use smart split for other commands (SELECT, etc.)
@@ -103,6 +109,9 @@ public class ParserDML {
                 select.run(commandSegments);
                 break;
             case "insert":
+                // Already handled above
+                break;
+            case "update":
                 // Already handled above
                 break;
             default:
