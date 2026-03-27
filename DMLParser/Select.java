@@ -216,7 +216,8 @@ public class Select implements Command{
 
             }
             String usedTable = tableNames.remove(0);
-            if(tableNames.get(0).contains("$temp")){
+            if(usedTable.contains("$temp")){
+                Logger.log("Deleting table: "+usedTable);
                 storageManager.DropTable(catalog.getTable(usedTable));
             }
             tableNames.set(0, tempTable.getTableName());
