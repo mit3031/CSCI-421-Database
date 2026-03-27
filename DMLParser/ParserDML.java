@@ -22,17 +22,19 @@ public class ParserDML {
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
         char quoteChar = '\0';
-        
+
         for (int i = 0; i < command.length(); i++) {
             char c = command.charAt(i);
-            
+
             if (!inQuotes && (c == '"' || c == '\'')) {
                 // Start of quoted string
                 inQuotes = true;
                 quoteChar = c;
+                current.append(c);
             } else if (inQuotes && c == quoteChar) {
                 // End of quoted string
                 inQuotes = false;
+                current.append(c);
                 tokens.add(current.toString());
                 current = new StringBuilder();
             } else if (inQuotes) {
@@ -49,12 +51,12 @@ public class ParserDML {
                 current.append(c);
             }
         }
-        
+
         // Add last token if exists
         if (current.length() > 0) {
             tokens.add(current.toString());
         }
-        
+
         return tokens.toArray(new String[0]);
     }
 
@@ -87,14 +89,44 @@ public class ParserDML {
         } else if (commandLower.startsWith("update")) {
             // Handle update specially to preserve quotes for the SET clause
             Command update = new Update();
-            // Passing the raw command inside an arrau
+            // Passing the raw command inside an array
             update.run(new String[]{command});
+            return true;
+        } else if (commandLower.startsWith("delete")) {
+            if (!command.toLowerCase().contains("from")) {
+                throw new SQLSyntaxErrorException("DELETE statement missing FROM keyword.");
+            }
+
+            String[] splitFrom = command.split("FROM", 2);
+            if (splitFrom.length < 2) {
+                splitFrom = command.split("from", 2);
+            }
+
+            String table = splitFrom[1].strip();
+
+            if (!command.toLowerCase().contains("where")) {
+                String[] check = table.split(" ");
+                if (check.length > 1) {
+                    throw new SQLSyntaxErrorException("Only one table name per DELETE.");
+                }
+                //Delete.run(table, "");
+            } else {
+                String[] splitWhere = table.split("WHERE", 2);
+                if (splitWhere.length < 2) {
+                    splitWhere = table.split("where", 2);
+                }
+
+                String tableName = splitWhere[0].strip();
+                String where = splitWhere[1].strip();
+                //Delete.run(tableName, where);
+            }
+
             return true;
         }
 
         // Use smart split for other commands (SELECT, etc.)
         String[] commandSegments = smartSplit(command);
-        
+
         if (commandSegments.length == 0) {
             throw new SQLSyntaxErrorException("No command entered");
         }
@@ -114,14 +146,16 @@ public class ParserDML {
             case "update":
                 // Already handled above
                 break;
+            case "delete":
+                // Already handled above
+                break;
             default:
                 throw new SQLSyntaxErrorException("Invalid Command, " + firstWord + " is an unknown command");
         }
 
-
         return true;
     }
-    
+
     /**
      * Special parser for INSERT commands that preserves quotes around string literals
      * Parses: INSERT INTO <table> VALUES (...)
@@ -132,14 +166,14 @@ public class ParserDML {
         if (valuesIndex == -1) {
             throw new SQLSyntaxErrorException("INSERT statement missing VALUES keyword");
         }
-        
+
         // Parse the part before VALUES normally
         String beforeValues = command.substring(0, valuesIndex).trim();
         String[] beforeTokens = beforeValues.split("\\s+");
-        
+
         // Get the VALUES clause (preserve everything including quotes)
         String valuesClause = command.substring(valuesIndex + 6).trim(); // Skip "values"
-        
+
         // Build result array: INSERT, INTO, <table>, VALUES, <values_clause>
         List<String> result = new ArrayList<>();
         for (String token : beforeTokens) {
@@ -147,12 +181,12 @@ public class ParserDML {
         }
         result.add("VALUES");
         result.add(valuesClause);
-        
+
         return result.toArray(new String[0]);
     }
 
     public static void main(String[] args){
-        args = new String[] {"--debug"}; 
+        args = new String[] {"--debug"};
         Logger.initDebug(args);
 
         String dbPath = "ParserTestDB";
