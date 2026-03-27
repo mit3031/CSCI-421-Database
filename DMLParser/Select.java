@@ -168,8 +168,8 @@ public class Select implements Command{
             List<Attribute> newAttributes = new ArrayList<>();
 
             //Lambda statement to rename attributes and add them to the new list of attributes
-            table1.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (attr.getName().contains(".")) ? table1.getTableName()+"."+attr.getName() : attr.getName())));
-            table2.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (attr.getName().contains(".")) ? table2.getTableName()+"."+attr.getName() : attr.getName())));
+            table1.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (!attr.getName().contains(".")) ? table1.getTableName()+"."+attr.getName() : attr.getName())));
+            table2.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (!attr.getName().contains(".")) ? table2.getTableName()+"."+attr.getName() : attr.getName())));
 
             // Create a temporary table, tableNameCounter is used in the case that there are 3 or more tables being
             // combined and there will be an instance where more than one temp table will need to be created
