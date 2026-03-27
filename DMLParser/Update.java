@@ -8,6 +8,8 @@ import Catalog.TableSchema;
 import Common.Command;
 import Common.Logger;
 import Common.Page;
+import Common.Where.BuildTree;
+import Common.Where.IWhereOp;
 import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
@@ -129,6 +131,14 @@ public class Update implements Command {
             TableSchema tempSchema = new TableSchema(tempTableName, new ArrayList<>(attributes));
             store.CreateTable(tempSchema);
 
+            // Builds the where tree if a where clause exists
+            IWhereOp whereTree = null;
+            if (hasWhere) {
+                whereTree = BuildTree.buildTree(whereClause, schema);
+                if (whereTree == null) {
+                    throw new SQLSyntaxErrorException("Invalid WHERE clause syntax or types");
+                }
+            }
             // keep track of primary keys inserted into the temp table to prevent duplicates
             Set<String> tempTablePKs = new HashSet<>();
 
@@ -140,11 +150,8 @@ public class Update implements Command {
                     if (!hasWhere) {
                         shouldUpdate = true; // update all rows
                     } else {
-
-                        // TODO: Where stuff in here
-
-                        Logger.log("Evaluating WHERE condition: " + whereClause + " for row: " + row);
-                        shouldUpdate = true; // stubbed to true for testing
+                        // Where evaluation here
+                        shouldUpdate = whereTree.evaluate(new ArrayList<>(row), schema);
                     }
 
                     // clone the row to prepare for insertion into the temp table
