@@ -142,8 +142,13 @@ public class Select implements Command{
     private ParseResult whereParse(String whereSection, String tempTableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema newTable = new TableSchema("$where", catalog.getTable(tempTableName).getAttributes());
-
-        IWhereOp whereTree = buildTree(whereSection, newTable);
+            IWhereOp whereTree;
+        try {
+            whereTree = buildTree(whereSection, newTable);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return new ParseResult("error", true);
+        }
         if (whereTree == null) {
             return new ParseResult("error", true);
         }
@@ -154,20 +159,25 @@ public class Select implements Command{
         Page page = storageManager.selectFirstPage(tempTableName);
         int address = catalog.getAddressOfPage("$where");
         int nextPage = -1;
-        while (page != null) {
-            for (int i = 0; i < page.getNumRows(); i++) {
-                if (whereTree.evaluate(page.getRecord(i), newTable)) {
-                    address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
+        try {
+            while (page != null) {
+                for (int i = 0; i < page.getNumRows(); i++) {
+                    if (whereTree.evaluate(page.getRecord(i), newTable)) {
+                        address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
+                    }
                 }
-            }
-            nextPage = page.getNextPage();
-                if(nextPage!= -1) {
+                nextPage = page.getNextPage();
+                if (nextPage != -1) {
                     page = storageManager.select(nextPage, tempTableName);
-                }
-                else{
+                } else {
                     page = null;
                 }
 
+            }
+        }
+        catch (Exception e){
+            System.out.println(e.getMessage());
+            return new ParseResult("error", true);
         }
         return new ParseResult("$where", true);
     }
@@ -451,7 +461,12 @@ public class Select implements Command{
         }
 
         Logger.log("Running the from section: " + extractedFrom);
-        fromResult = this.fromParse(extractedFrom);
+        try {
+            fromResult = this.fromParse(extractedFrom);
+        } catch (SQLSyntaxErrorException e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
         // every command must have a FROM clause
         String currentWorkingTable = fromResult.tableName;
         Logger.log("Working table from FROM: " + currentWorkingTable);
@@ -470,6 +485,12 @@ public class Select implements Command{
             Logger.log("Running where parse on: " + extractedWhere);
             whereResult = this.whereParse(extractedWhere, currentWorkingTable);
             if (whereResult.tableName.equals("error")) {
+                if(whereResult.isTemporary){
+                    Logger.log("Deleting temp where table: " + "$where");
+                    TableSchema temp = Catalog.getInstance().getTable("$where");
+                    StorageManager.getStorageManager().DropTable(temp);
+                    Catalog.getInstance().dropTable("$where");
+                }
                 return false;
             }
 
