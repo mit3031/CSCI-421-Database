@@ -205,7 +205,7 @@ public class Update implements Command {
             System.out.println(recordsUpdated + " rows updated successfully.");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             // Cleans up the temp table if something fails
             try {
                 if (catalog.tableExists(tempTableName)) {
