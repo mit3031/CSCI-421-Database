@@ -61,7 +61,7 @@ public class ParserDML {
     }
 
     public static boolean runCommand(String command)
-            throws SQLSyntaxErrorException {
+            throws Exception {
 
         // command should end with a semicolon
 
