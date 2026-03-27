@@ -61,7 +61,7 @@ public class ParserDML {
     }
 
     public static boolean runCommand(String command)
-            throws SQLSyntaxErrorException {
+            throws Exception {
 
         // command should end with a semicolon
 
@@ -90,6 +90,24 @@ public class ParserDML {
                 throw new RuntimeException(e);
             }
             return true;
+        } else if(commandLower.startsWith("delete")) {
+            if (!command.toLowerCase().contains("from")) {
+                throw new SQLSyntaxErrorException("DELETE statement missing FROM keyword.");
+            }
+            String table = command.split("FROM")[1].strip();
+            if (!command.toLowerCase().contains("where")) {
+                String[] check = table.split(" ");
+                if (check.length > 1) {
+                    throw new SQLSyntaxErrorException("Only one table name per DELETE.");
+                }
+                Delete.run(table, "");
+            } else {
+                String where = table.split("WHERE")[1].replace(";", "").strip();
+                String tableName = table.split("WHERE")[0].strip();
+                Delete.run(tableName, where);
+            }
+
+            //String where = command.substring();
         }
 
         // Use smart split for other commands (SELECT, etc.)
@@ -115,6 +133,8 @@ public class ParserDML {
                 break;
             case "insert":
                 // Already handled above
+                break;
+            case "delete":
                 break;
             default:
                 throw new SQLSyntaxErrorException("Invalid Command, " + firstWord + " is an unknown command");
@@ -167,6 +187,8 @@ public class ParserDML {
             ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ORDERING BY d;");
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

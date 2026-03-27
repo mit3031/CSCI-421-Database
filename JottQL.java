@@ -113,7 +113,7 @@ public class JottQL {
                     Logger.log("Command Sent to DDL Parser");
                     ParserDDL.parseCommand(message);
 
-                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT")) {
+                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT") || keywords[0].equals("DELETE")) {
                     //DML parser handles
                     Logger.log(("Command Sent to DML Parser"));
                     try {
