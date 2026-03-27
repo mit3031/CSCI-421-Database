@@ -41,7 +41,7 @@ public class BufferManager {
 
     public void newPage(int Address, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4), Address+ catalog.getPageSize(), true, tableName);
+        Page newPage = new Page(0, Address, -1, Address+(Integer.BYTES*4), Address+catalog.getPageSize(), true, tableName);
         catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
         //adds new page to bufferpages
         addPageToBuffer(newPage);
@@ -92,7 +92,169 @@ public class BufferManager {
         return page;
     }
 
+    /**
+     * Inserts a row(s) into the proper page based on primary key order. This is a brute-force approach
+     * @param tableName the name of the table to insert the row(s) into
+     * @param rows the row(s) to be inserted
+     * @param pageAddress the address of the first page in the table
+     * @return Address of the page the last row was inserted into
+     * @throws Exception
+     */
     public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        TableSchema table = catalog.getTable(tableName);
+
+        if (table == null) {
+            throw new Exception("Table does not exist: " + tableName);
+        }
+
+        Page currentPage = select(pageAddress, tableName);
+
+        List<Attribute> attributes = table.getAttributes();
+        List<Integer> pkIndices = new ArrayList<>();
+        for (int i = 0; i < attributes.size(); i++) {
+            if (attributes.get(i).getDefinition().getIsPrimary()) {
+                pkIndices.add(i);
+            }
+        }
+
+        Integer pkIndex = pkIndices.get(0);
+
+        for (List<Object> row : rows) {
+            // Convert List<Object> to ArrayList<Object>
+            ArrayList<Object> record = new ArrayList<>(row);
+
+            // Calculate the size needed for this record (data + directory overhead)
+            int recordSize = calculateRecordSize(table, record);
+            int directoryOverhead = Integer.BYTES * 2; // offset and length in directory
+            int totalRecordSize = recordSize + directoryOverhead;
+
+            Object primaryKey = record.get(pkIndex);
+            boolean inserted = false;
+
+            // Find the place where the record should go
+            do {
+                int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
+                if(currentPage.isEmpty())
+                {
+                    if(availableSpace < totalRecordSize){
+                        throw new Exception("Page size too small for this entry for records of this size please create a new database with a larger page size");
+                    }
+                    currentPage.addRecord(record);
+                    inserted = true;
+                    currentPage.setNumRows(currentPage.getNumRows() + 1);
+                    break;
+                }
+                for (int pageRow = 0; pageRow < currentPage.getNumRows(); pageRow++) {
+                    int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
+                    // Both primary keys are equal should not be possible if primary keys are being enforced
+                    if (pKeyCompare == 0) {
+                        if(availableSpace < totalRecordSize){
+                            currentPage = splitPage(currentPage, record, pageRow+1, catalog);
+                        } else {
+                            currentPage.addRecord(record, pageRow+1);
+                            currentPage.setNumRows(currentPage.getNumRows() + 1);
+                        }
+                        inserted = true;
+                        break;
+                        //primaryKey of record to be inserted < primary key of current record in the page
+                    } else if (pKeyCompare < 0) {
+                        if(availableSpace < totalRecordSize){
+                            currentPage = splitPage(currentPage, record, pageRow, catalog);
+                        } else {
+                            currentPage.addRecord(record, pageRow);
+                            currentPage.setNumRows(currentPage.getNumRows() + 1);
+                        }
+                        inserted = true;
+
+                        break;
+
+                        // primaryKey or record to be inserted > primary key of current record in the page
+                    } else if (pageRow == currentPage.getNumRows() - 1) {
+                        // if the page has already split, and this is the last element in the page the record belongs in the next page
+                        if (currentPage.getNextPage() != -1) {
+                            currentPage = select(currentPage.getNextPage(), tableName);
+                            break;
+                        } else {
+                            //Split the page and insert or just insert directly if no split is necessary
+                            if(availableSpace < totalRecordSize){
+                                currentPage = splitPage(currentPage, record, -1, catalog);
+                            } else {
+                                currentPage.addRecord(record, -1);
+                                currentPage.setNumRows(currentPage.getNumRows() + 1);
+                            }
+                            inserted = true;
+
+                            break;
+                        }
+                    } else if (pageRow != currentPage.getNumRows() - 1) {
+
+
+
+                    }
+                }
+
+            } while (!inserted);
+
+//            // If not enough space, we need a new page
+//            if (availableSpace < totalRecordSize) {
+//                // Write current page before moving to a new one
+//                //if (currentPage.getModified()) {
+//                    //writePage(currentPage);
+//                    //currentPage.SetModified(false);
+//                //}
+//
+//                // Get a new page
+//                int newPageAddress;
+//                if (catalog.hasFreePages()) {
+//                    newPageAddress = catalog.getFirstFreePage();
+//                    catalog.removeFirstFreePage();
+//                } else {
+//                    // Allocate a new page at the end
+//                    newPageAddress = catalog.getFirstFreeAddress();
+//                }
+//
+//                // Mark current page as having a next page
+//                currentPage.setNextPage(newPageAddress);
+//                currentPage.SetModified(true);
+//                //let buffer handle this
+//                //writePage(currentPage);
+//                //currentPage.SetModified(false);
+//
+//                // Create the new page
+//                newPage(newPageAddress, tableName);
+//                currentPage = select(newPageAddress, tableName);
+//            }
+
+            // Add record to current page
+//            currentPage.addRecord(record);
+//            currentPage.setNumRows(currentPage.getNumRows() + 1);
+
+            // Update free space pointers
+            //currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
+            //currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
+            currentPage.SetModified(true);
+            currentPage.updateLastUsed();
+        }
+
+        // Write the final page
+        //if (currentPage.getModified()) {
+            //writePage(currentPage);
+            //currentPage.SetModified(false);
+        //}
+        return currentPage.getPageAddress();
+    }
+
+    /**
+     * This insert is used for cartesian product since the two tables being combined should already be in their primary-key
+     * order we can just add rows one after another rather than trying to sort them
+     * @param tableName the name of the table to insert the row(s) into
+     * @param rows the row(s) to be inserted
+     * @param pageAddress the address of the first page in the table
+     * @return Address of the page the last row was inserted into
+     * @throws Exception
+     */
+    public Integer heapInsert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(tableName);
 
@@ -116,8 +278,8 @@ public class BufferManager {
             if (availableSpace < totalRecordSize) {
                 // Write current page before moving to a new one
                 //if (currentPage.getModified()) {
-                    //writePage(currentPage);
-                    //currentPage.SetModified(false);
+                //writePage(currentPage);
+                //currentPage.SetModified(false);
                 //}
 
                 // Get a new page
@@ -155,10 +317,69 @@ public class BufferManager {
 
         // Write the final page
         //if (currentPage.getModified()) {
-            //writePage(currentPage);
-            //currentPage.SetModified(false);
+        //writePage(currentPage);
+        //currentPage.SetModified(false);
         //}
         return currentPage.getPageAddress();
+    }
+
+
+    /**
+     * Splits the current page into two with half the records staying in the current page and the half the records into
+     * a new page. If the number of elements plus the added record is odd, the larger number of records stays in the current page
+     * if the number of elements plus the added record is even then both pages will get the same number of records.
+     * @param currentPage The page that needs to be split
+     * @param record the record that needs to be inserted which triggered the split
+     * @param insertionIndex the index where the current record should be inserted ignoring the split
+     * @param catalog the catalog (Note: this is simply included as to not instantiate another instance of the catalog)
+     * @return
+     * @throws Exception
+     */
+    private Page splitPage(Page currentPage, ArrayList<Object> record, int insertionIndex, Catalog catalog) throws Exception {
+
+        ArrayList<ArrayList<Object>> recordsBeforeSplit = currentPage.arrayForSplit(record, insertionIndex);
+        int recordSize = recordsBeforeSplit.size();
+        int leftHalfSize = recordSize - recordSize / 2;
+
+        //create new page
+        int newPageAddress;
+        if (catalog.hasFreePages()) {
+            newPageAddress = catalog.getFirstFreePage();
+            catalog.removeFirstFreePage();
+        } else {
+            // Allocate a new page at the end
+            newPageAddress = catalog.getFirstFreeAddress();
+        }
+        newPage(newPageAddress, currentPage.getTableName());
+        int newPageNext = -1;
+        if(currentPage.getNextPage() != -1){
+            newPageNext = currentPage.getNextPage();
+        }
+        currentPage.setNextPage(newPageAddress);
+
+        currentPage.addRecord(record, insertionIndex);
+        currentPage.setNumRows(currentPage.getNumRows() + 1);
+
+        for (int i = recordSize-1; i >= leftHalfSize; i--) {
+            currentPage.removeRecord(i);
+        }
+        currentPage.updateLastUsed();
+        currentPage.setPageHasSplit(true);
+
+        currentPage = select(currentPage.getNextPage(), currentPage.getTableName());
+        currentPage.setNextPage(newPageNext);
+
+        for (int i = leftHalfSize; i < recordSize; i++){
+            currentPage.addRecord(recordsBeforeSplit.get(i));
+            currentPage.setNumRows(currentPage.getNumRows() + 1);
+        }
+
+        currentPage.updateLastUsed();
+        return currentPage;
+    }
+
+    private int comparePrimaryKey(Object pk1, Object pk2){
+        return ((Comparable)pk1).compareTo(pk2);
     }
 
     /**
