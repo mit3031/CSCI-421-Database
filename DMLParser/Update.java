@@ -35,7 +35,7 @@ public class Update implements Command {
 
         int startIndex = upperStr.indexOf(upperStart) + upperStart.length() - 1;
 
-        int endIndex = str.length() - 1;
+        int endIndex = str.length();
         if (!end.equals("")){
             endIndex = upperStr.indexOf(upperEnd);
         }
@@ -205,6 +205,7 @@ public class Update implements Command {
             System.out.println(recordsUpdated + " rows updated successfully.");
 
         } catch (Exception e) {
+            e.printStackTrace();
             // Cleans up the temp table if something fails
             try {
                 if (catalog.tableExists(tempTableName)) {
