@@ -28,4 +28,14 @@ public class Attribute {
     public String getDefaultValue() {
         return defaultValue;
     }
+
+    /**
+     * Returns a copy of the attribute with a new name. Attributes are immutable so we must return a new one
+     * @param attribute the attribute that the new attribute should be based on
+     * @param newName the new name for attribute
+     * @return
+     */
+    public static Attribute rename(Attribute attribute, String newName) {
+         return new Attribute(newName, attribute.getDefinition());
+    }
 }

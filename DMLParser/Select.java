@@ -6,13 +6,14 @@ import Catalog.Catalog;
 import Catalog.TableSchema;
 import Common.Logger;
 import Common.Page;
+import Common.Where.*;
 import StorageManager.StorageManager;
 
 import java.sql.SQLSyntaxErrorException;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
-import java.util.Arrays;
+
+import static Common.Where.BuildTree.buildTree;
 
 /*
 
@@ -120,29 +121,158 @@ public class Select implements Command{
     // If a new table is generated return the new table name, true
     // if no new table is generated, return the old table name, false
     // this way future parts can get the table name but it won't be deleted by accident. 
-    private ParseResult fromParse(String fromSection) throws SQLSyntaxErrorException {
-        // For now, just handle simple single-table case
-        // TODO: Later implement cartesian product for multiple tables
+    private ParseResult fromParse(String fromSection) throws Exception {
         // When cartesian product is implemented, create temp table with qualified attribute names
         // Example: FROM A, B where A has (x,y) and B has (x,q) -> create temp table with (A.x, A.y, B.x, B.q)
-        String tableName = fromSection.trim();
-        
+        String TEMP_TABLE_NAME = "$temp";
+        //String tableName = fromSection.trim();
+
         // Check if table exists
         Catalog catalog = Catalog.getInstance();
-        if (!catalog.tableExists(tableName)){
-            throw new SQLSyntaxErrorException("Table: " + tableName + " does not exist");
+        StorageManager storageManager = StorageManager.getStorageManager();
+
+        ArrayList<String> tableNames = new ArrayList<>(Arrays.asList(fromSection.split(",")));
+
+        // Check if tables exist and ensure there is no whitespace attached
+        for ( int i = 0; i < tableNames.size(); i++ ) {
+            String tableName = tableNames.get(i).trim();
+            tableNames.set(i, tableName);
+            if (!catalog.tableExists(tableName)){
+                throw new SQLSyntaxErrorException("Table: " + tableName + " does not exist");
+            }
         }
-        
-        // Single table, no cartesian product needed - return original table
-        return new ParseResult(tableName, false); 
+
+        // Single table so just return original table
+        if (tableNames.size() == 1){
+            return new ParseResult(tableNames.get(0), false);
+        }
+
+        // Multiple tables need to do a cartesian product
+
+        // while (length of table names > 1)
+        // get first two tables
+        // create a list of combined attributes
+        // Rename attriubtes to be tablename.attrname as long as current attrname doesn't contian a '.'
+        // Add them into  alist together
+        // create temp table
+        // for rows in t1
+        // for rows in t2
+        // combine t1 row and t2 row, add to table
+        // remove first element
+        // make second element equal to new temp table
+
+        int tableNameCounter = 0;
+        while (tableNames.size() > 1) {
+            TableSchema table1 = catalog.getTable(tableNames.get(0));
+            TableSchema table2 = catalog.getTable(tableNames.get(1));
+            List<Attribute> newAttributes = new ArrayList<>();
+
+            //Lambda statement to rename attributes and add them to the new list of attributes
+            table1.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (!attr.getName().contains(".")) ? table1.getTableName()+"."+attr.getName() : attr.getName())));
+            table2.getAttributes().forEach(attr -> newAttributes.add(Attribute.rename(attr, (!attr.getName().contains(".")) ? table2.getTableName()+"."+attr.getName() : attr.getName())));
+
+            // Create a temporary table, tableNameCounter is used in the case that there are 3 or more tables being
+            // combined and there will be an instance where more than one temp table will need to be created
+            TableSchema tempTable = new TableSchema(TEMP_TABLE_NAME + tableNameCounter, newAttributes);
+            storageManager.CreateTable(tempTable);
+
+            // Get the first page for the two tables
+            Page table1Page = storageManager.selectFirstPage(table1.getTableName());
+
+            int address = catalog.getAddressOfPage(tempTable.getTableName());
+
+            // Perform cartesian product and insert them into the temporary table
+            while (true){
+
+                for (int i = 0; i < table1Page.getNumRows(); i++){
+                    Page table2Page = storageManager.selectFirstPage(table2.getTableName());
+
+                    // for each row in table 1 add every row from table 2
+                    while(true) {
+                        List<List<Object>> newRows = new ArrayList<>();
+                        for (int j = 0; j < table2Page.getNumRows(); j++) {
+                            List<Object> newRow = new ArrayList<>();
+                            newRow.addAll(table1Page.getRecord(i));
+                            newRow.addAll(table2Page.getRecord(j));
+                            newRows.add(newRow);
+                        }
+
+                        // Insert rows in batches, a batch is one row from table1 combined with all rows from table2 in one page
+                        address = storageManager.heapInsert(tempTable.getTableName(), newRows, address);
+                        //if there is a new page move to it, otherwise move back to the outside table
+                        if (table2Page.getNextPage() != -1) {
+                            table2Page = storageManager.select(table2Page.getNextPage(), table2.getTableName());
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if(table1Page.getNextPage() != -1){
+                    table1Page = storageManager.select(table1Page.getNextPage(), table1.getTableName());
+                } else {
+                    break;
+                }
+
+            }
+            String usedTable = tableNames.remove(0);
+            if(usedTable.contains("$temp")){
+                Logger.log("Deleting table: "+usedTable);
+                storageManager.DropTable(catalog.getTable(usedTable));
+            }
+            tableNames.set(0, tempTable.getTableName());
+            tableNameCounter++;
+
+        }
+
+
+        return new ParseResult(tableNames.get(0), true);
     }
 
     // in theory this should always return a new table 
-    private ParseResult whereParse(String whereSection, String tempTableName) throws SQLSyntaxErrorException {
-        // TODO: Implement WHERE clause logic
-        return new ParseResult(Select.NONEWTABLE, false);
+    private ParseResult whereParse(String whereSection, String tempTableName) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        TableSchema newTable = new TableSchema("$where", catalog.getTable(tempTableName).getAttributes());
+            IWhereOp whereTree;
+        try {
+            whereTree = buildTree(whereSection, newTable);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return new ParseResult("error", false);
+        }
+        if (whereTree == null) {
+            return new ParseResult("error", false);
+        }
+        StorageManager storageManager = StorageManager.getStorageManager();
+        storageManager.CreateTable(newTable);
+
+        //find start of old table
+        Page page = storageManager.selectFirstPage(tempTableName);
+        int address = catalog.getAddressOfPage("$where");
+        int nextPage = -1;
+        try {
+            while (page != null) {
+                for (int i = 0; i < page.getNumRows(); i++) {
+                    if (whereTree.evaluate(page.getRecord(i), newTable)) {
+                        address = storageManager.insertSingleRow("$where", page.getRecord(i), address);
+                    }
+                }
+                nextPage = page.getNextPage();
+                if (nextPage != -1) {
+                    page = storageManager.select(nextPage, tempTableName);
+                } else {
+                    page = null;
+                }
+
+            }
+        }
+        catch (Exception e){
+            System.out.println(e.getMessage());
+            return new ParseResult("error", true);
+        }
+        return new ParseResult("$where", true);
     }
-  
+
     /**
      * Resolves the attribute name for the order by clause, handling dot notation and ambiguity
      * @param orderSection The raw string of the attribute to sort by
@@ -361,7 +491,6 @@ public class Select implements Command{
             throw new SQLSyntaxErrorException("Error during ORDER BY execution: " + e.getMessage());
         }
     }
-  
 
     /**
      * Executes a SELECT * query on the specified table
@@ -370,26 +499,26 @@ public class Select implements Command{
      */
     private void executeSelectAll(String tableName) throws SQLSyntaxErrorException {
         Catalog cat = Catalog.getInstance();
-        
+
         // Verify that table exists
         if (!cat.tableExists(tableName)){
             throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
         }
-        
+
         StorageManager store = StorageManager.getStorageManager();
         try {
             Page currentPage = store.selectFirstPage(tableName);
-            
+
             if (currentPage == null) {
                 Logger.log("Table " + tableName + " is empty");
                 System.out.println("Table " + tableName + " is empty");
                 return;
             }
-            
+
             // Get table schema for column names
             TableSchema schema = cat.getTable(tableName);
             List<Attribute> attributes = schema.getAttributes();
-            
+
             // Collect all rows first to calculate column widths
             List<List<Object>> allRows = new ArrayList<>();
             while (true){
@@ -401,28 +530,28 @@ public class Select implements Command{
                 }
                 currentPage = store.select(currentPage.getNextPage(), tableName);
             }
-            
+
             // Calculate column widths
             int[] columnWidths = new int[attributes.size()];
             for (int i = 0; i < attributes.size(); i++) {
                 columnWidths[i] = attributes.get(i).getName().length();
-                
+
                 for (List<Object> row : allRows) {
                     String value = formatValue(row.get(i));
                     columnWidths[i] = Math.max(columnWidths[i], value.length());
                 }
-                
+
                 columnWidths[i] = Math.max(columnWidths[i], 4);
             }
-            
+
             // Print header row
             for (int i = 0; i < attributes.size(); i++) {
                 System.out.print("|");
-                System.out.print(String.format(" %" + columnWidths[i] + "s ", 
+                System.out.print(String.format(" %" + columnWidths[i] + "s ",
                     attributes.get(i).getName()));
             }
             System.out.println("|");
-            
+
             // Print separator line
             for (int i = 0; i < attributes.size(); i++) {
                 System.out.print("-");
@@ -431,7 +560,7 @@ public class Select implements Command{
                 }
             }
             System.out.println("-");
-            
+
             // Print data rows
             for (List<Object> row : allRows) {
                 for (int i = 0; i < row.size(); i++) {
@@ -455,25 +584,25 @@ public class Select implements Command{
      */
     private void executeProjection(String tableName, String projection) throws SQLSyntaxErrorException {
         Catalog cat = Catalog.getInstance();
-        
+
         // Verify that table exists
         if (!cat.tableExists(tableName)){
             throw new SQLSyntaxErrorException("Table does not exist: " + tableName);
         }
-        
+
         // Parse projection attributes
         List<String> projectionList = Arrays.stream(projection.split(","))
             .map(String::trim)
             .collect(Collectors.toList());
-        
+
         // Get table schema
         TableSchema schema = cat.getTable(tableName);
         List<Attribute> allAttributes = schema.getAttributes();
-        
+
         // Find indices of projection attributes
         List<Integer> projectionIndices = new ArrayList<>();
         List<Attribute> projectionAttributes = new ArrayList<>();
-        
+
         for (String projAttr : projectionList) {
             // Check if this is a qualified name (table.attribute)
             if (projAttr.contains(".")) {
@@ -482,15 +611,15 @@ public class Select implements Command{
                 if (parts.length != 2) {
                     throw new SQLSyntaxErrorException("Invalid qualified attribute name: " + projAttr);
                 }
-                
+
                 String requestedTable = parts[0].toLowerCase().trim();
                 String requestedAttr = parts[1].toLowerCase().trim();
-                
+
                 // Look for this exact qualified attribute in the schema
                 boolean found = false;
                 for (int i = 0; i < allAttributes.size(); i++) {
                     String attrName = allAttributes.get(i).getName().toLowerCase();
-                    
+
                     // Check if attribute matches the qualified name
                     // For single tables, attribute should just be the name
                     // For cartesian products, attribute will be "table.attribute"
@@ -508,18 +637,18 @@ public class Select implements Command{
                         break;
                     }
                 }
-                
+
                 if (!found) {
                     throw new SQLSyntaxErrorException("Column not found: " + projAttr);
                 }
             } else {
                 // Unqualified name: check for ambiguity
                 List<Integer> matchingIndices = new ArrayList<>();
-                
+
                 for (int i = 0; i < allAttributes.size(); i++) {
                     String attrName = allAttributes.get(i).getName().toLowerCase();
                     String searchAttr = projAttr.toLowerCase();
-                    
+
                     // Check if attribute name matches (could be qualified or unqualified in schema)
                     if (attrName.equals(searchAttr)) {
                         // Exact match
@@ -529,11 +658,11 @@ public class Select implements Command{
                         matchingIndices.add(i);
                     }
                 }
-                
+
                 if (matchingIndices.isEmpty()) {
                     throw new SQLSyntaxErrorException("Column not found: " + projAttr);
                 } else if (matchingIndices.size() > 1) {
-                    throw new SQLSyntaxErrorException("Ambiguous column name: " + projAttr + 
+                    throw new SQLSyntaxErrorException("Ambiguous column name: " + projAttr +
                         ". Please qualify with table name (e.g., tablename." + projAttr + ")");
                 } else {
                     // Exactly one match - unambiguous
@@ -542,17 +671,17 @@ public class Select implements Command{
                 }
             }
         }
-        
+
         StorageManager store = StorageManager.getStorageManager();
         try {
             Page currentPage = store.selectFirstPage(tableName);
-            
+
             if (currentPage == null) {
                 Logger.log("Table " + tableName + " is empty");
                 System.out.println("Table " + tableName + " is empty");
                 return;
             }
-            
+
             // Collect all rows
             List<List<Object>> allRows = new ArrayList<>();
             while (true){
@@ -564,29 +693,29 @@ public class Select implements Command{
                 }
                 currentPage = store.select(currentPage.getNextPage(), tableName);
             }
-            
+
             // Calculate column widths for projection
             int[] columnWidths = new int[projectionAttributes.size()];
             for (int i = 0; i < projectionAttributes.size(); i++) {
                 columnWidths[i] = projectionAttributes.get(i).getName().length();
-                
+
                 int colIndex = projectionIndices.get(i);
                 for (List<Object> row : allRows) {
                     String value = formatValue(row.get(colIndex));
                     columnWidths[i] = Math.max(columnWidths[i], value.length());
                 }
-                
+
                 columnWidths[i] = Math.max(columnWidths[i], 4);
             }
-            
+
             // Print header row
             for (int i = 0; i < projectionAttributes.size(); i++) {
                 System.out.print("|");
-                System.out.print(String.format(" %" + columnWidths[i] + "s ", 
+                System.out.print(String.format(" %" + columnWidths[i] + "s ",
                     projectionAttributes.get(i).getName()));
             }
             System.out.println("|");
-            
+
             // Print separator line
             for (int i = 0; i < projectionAttributes.size(); i++) {
                 System.out.print("-");
@@ -595,7 +724,7 @@ public class Select implements Command{
                 }
             }
             System.out.println("-");
-            
+
             // Print data rows (only projection columns)
             for (List<Object> row : allRows) {
                 for (int i = 0; i < projectionIndices.size(); i++) {
@@ -611,8 +740,8 @@ public class Select implements Command{
             throw new SQLSyntaxErrorException("Error reading from table: " + e.getMessage());
         }
     }
-    
-    public boolean parseSelect(String[] command) throws SQLSyntaxErrorException{
+
+    public boolean parseSelect(String[] command) throws Exception {
         StringBuffer sb = new StringBuffer();
         for(int i = 0; i < command.length; i++) {
             sb.append(command[i] + " ");
@@ -636,7 +765,12 @@ public class Select implements Command{
         }
 
         Logger.log("Running the from section: " + extractedFrom);
-        fromResult = this.fromParse(extractedFrom);
+        try {
+            fromResult = this.fromParse(extractedFrom);
+        } catch (SQLSyntaxErrorException e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
         // every command must have a FROM clause
         String currentWorkingTable = fromResult.tableName;
         Logger.log("Working table from FROM: " + currentWorkingTable);
@@ -654,7 +788,16 @@ public class Select implements Command{
 
             Logger.log("Running where parse on: " + extractedWhere);
             whereResult = this.whereParse(extractedWhere, currentWorkingTable);
-            
+            if (whereResult.tableName.equals("error")) {
+                if(whereResult.isTemporary){
+                    Logger.log("Deleting temp where table: " + "$where");
+                    TableSchema temp = Catalog.getInstance().getTable("$where");
+                    StorageManager.getStorageManager().DropTable(temp);
+                    Catalog.getInstance().dropTable("$where");
+                }
+                return false;
+            }
+
             if (!whereResult.tableName.equals(Select.NONEWTABLE)) {
                 currentWorkingTable = whereResult.tableName;
             }
@@ -705,7 +848,7 @@ public class Select implements Command{
             try {
                 sm.DropTable(table);
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println(e.getMessage());
                 throw new RuntimeException(e);
             }
         }
@@ -724,9 +867,9 @@ public class Select implements Command{
                 try {
                     sm.DropTable(table);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                     throw new RuntimeException(e);
-                }   
+                }
             }
         }
 
@@ -747,7 +890,7 @@ public class Select implements Command{
                 try {
                     sm.DropTable(table);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                     throw new RuntimeException(e);
                 }
             }
@@ -757,13 +900,13 @@ public class Select implements Command{
     }
 
     @Override
-    public boolean run(String[] command) throws SQLSyntaxErrorException{
+    public boolean run(String[] command) throws Exception {
         if (command.length < 4){
             throw new SQLSyntaxErrorException(
                     "Invalid select structure: SELECT * FROM <table>;"
             );
         }
-
+        //if false return false?
         parseSelect(command);
         return true; 
 

@@ -33,7 +33,12 @@ public class StorageManager {
             catalog.removeFirstFreePage();
         } else {
             // Start at page 0 for first table, or use page size increments
-            firstFreePage = catalog.getNumTables() * catalog.getPageSize();
+//            firstFreePage = catalog.getNumTables() * catalog.getPageSize();
+            if(catalog.getNumTables() == 0){
+                firstFreePage = 0;
+            } else {
+                firstFreePage = catalog.getFirstFreeAddress();
+            }
         }
         table.setRootPageID(firstFreePage);
         // Add table to catalog BEFORE creating the page so writePage can find it
@@ -164,7 +169,14 @@ public class StorageManager {
     public Integer insertSingleRow(String tableName, List<Object> row, int pageAddress) throws Exception {
         List<List<Object>> singleRowBatch = new ArrayList<>();
         singleRowBatch.add(row);
-        int nextAddress = this.insert(tableName, singleRowBatch, pageAddress);
+        // This insert previously needed to send the current address since heap insertion was used, as of now with primarkey sort insertion it should always start from page one
+        int nextAddress = this.insert(tableName, singleRowBatch, Catalog.getInstance().getAddressOfPage(tableName));
+        return nextAddress;
+    }
+
+    public Integer heapInsert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
+        BufferManager bufferManager = BufferManager.getInstance();
+        int nextAddress = bufferManager.heapInsert(tableName, rows, pageAddress);
         return nextAddress;
     }
 

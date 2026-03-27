@@ -22,10 +22,10 @@ public class ParserDML {
         StringBuilder current = new StringBuilder();
         boolean inQuotes = false;
         char quoteChar = '\0';
-
+        
         for (int i = 0; i < command.length(); i++) {
             char c = command.charAt(i);
-
+            
             if (!inQuotes && (c == '"' || c == '\'')) {
                 // Start of quoted string
                 inQuotes = true;
@@ -51,12 +51,12 @@ public class ParserDML {
                 current.append(c);
             }
         }
-
+        
         // Add last token if exists
         if (current.length() > 0) {
             tokens.add(current.toString());
         }
-
+        
         return tokens.toArray(new String[0]);
     }
 
@@ -109,7 +109,7 @@ public class ParserDML {
                 if (check.length > 1) {
                     throw new SQLSyntaxErrorException("Only one table name per DELETE.");
                 }
-                //Delete.run(table, "");
+                Delete.run(table, "");
             } else {
                 String[] splitWhere = table.split("WHERE", 2);
                 if (splitWhere.length < 2) {
@@ -118,7 +118,7 @@ public class ParserDML {
 
                 String tableName = splitWhere[0].strip();
                 String where = splitWhere[1].strip();
-                //Delete.run(tableName, where);
+                Delete.run(tableName, where);
             }
 
             return true;
@@ -126,7 +126,7 @@ public class ParserDML {
 
         // Use smart split for other commands (SELECT, etc.)
         String[] commandSegments = smartSplit(command);
-
+        
         if (commandSegments.length == 0) {
             throw new SQLSyntaxErrorException("No command entered");
         }
@@ -153,9 +153,10 @@ public class ParserDML {
                 throw new SQLSyntaxErrorException("Invalid Command, " + firstWord + " is an unknown command");
         }
 
+
         return true;
     }
-
+    
     /**
      * Special parser for INSERT commands that preserves quotes around string literals
      * Parses: INSERT INTO <table> VALUES (...)
@@ -166,14 +167,14 @@ public class ParserDML {
         if (valuesIndex == -1) {
             throw new SQLSyntaxErrorException("INSERT statement missing VALUES keyword");
         }
-
+        
         // Parse the part before VALUES normally
         String beforeValues = command.substring(0, valuesIndex).trim();
         String[] beforeTokens = beforeValues.split("\\s+");
-
+        
         // Get the VALUES clause (preserve everything including quotes)
         String valuesClause = command.substring(valuesIndex + 6).trim(); // Skip "values"
-
+        
         // Build result array: INSERT, INTO, <table>, VALUES, <values_clause>
         List<String> result = new ArrayList<>();
         for (String token : beforeTokens) {
@@ -181,12 +182,12 @@ public class ParserDML {
         }
         result.add("VALUES");
         result.add(valuesClause);
-
+        
         return result.toArray(new String[0]);
     }
 
     public static void main(String[] args){
-        args = new String[] {"--debug"};
+        args = new String[] {"--debug"}; 
         Logger.initDebug(args);
 
         String dbPath = "ParserTestDB";
@@ -199,6 +200,8 @@ public class ParserDML {
             ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ORDERING BY d;");
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
