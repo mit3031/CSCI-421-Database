@@ -147,10 +147,10 @@ public class Select implements Command{
             whereTree = buildTree(whereSection, newTable);
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            return new ParseResult("error", true);
+            return new ParseResult("error", false);
         }
         if (whereTree == null) {
-            return new ParseResult("error", true);
+            return new ParseResult("error", false);
         }
         StorageManager storageManager = StorageManager.getStorageManager();
         storageManager.CreateTable(newTable);

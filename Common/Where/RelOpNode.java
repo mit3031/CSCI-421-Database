@@ -34,6 +34,10 @@ public class RelOpNode implements IWhereOp{
             throw new JottTypeMismatchException("Types " + left.getType() + " and " + right.getType() + " Do not match!");
         }
 
+        if (op != ComparisonOp.IS && (val1 == null || val2 == null)){
+            return false;
+        }
+
         //the is Checks are very jank here.
         switch(left.getType()){
             case INTEGER:
