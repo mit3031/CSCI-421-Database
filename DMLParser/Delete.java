@@ -16,7 +16,13 @@ public class Delete {
         storageManager.CreateTable(newTable);
 
         if (!whereClause.equals("")) {
-            IWhereOp whereTree = buildTree(whereClause, newTable);
+            IWhereOp whereTree = null;
+            try {
+                whereTree = buildTree(whereClause, newTable);
+            } catch (Exception e) {
+                storageManager.DropTable(newTable);
+                throw e;
+            }
             if (whereTree == null) {
                 storageManager.DropTable(newTable);
                 return false;

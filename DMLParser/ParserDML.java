@@ -3,6 +3,8 @@ package DMLParser;
 import java.sql.SQLSyntaxErrorException;
 import java.util.ArrayList;
 import java.util.List;
+
+import Catalog.Catalog;
 import Common.Command;
 import DMLParser.Insert;
 import DMLParser.Select;
@@ -96,28 +98,33 @@ public class ParserDML {
             if (!command.toLowerCase().contains("from")) {
                 throw new SQLSyntaxErrorException("DELETE statement missing FROM keyword.");
             }
-
-            String[] splitFrom = command.split("FROM", 2);
-            if (splitFrom.length < 2) {
-                splitFrom = command.split("from", 2);
+            if (command.split("FROM").length <= 1) {
+                throw new SQLSyntaxErrorException("DELETE statement missing table name.");
             }
-
-            String table = splitFrom[1].strip();
+            Catalog catalog = Catalog.getInstance();
+            String table = command.split("FROM")[1].strip();
 
             if (!command.toLowerCase().contains("where")) {
                 String[] check = table.split(" ");
                 if (check.length > 1) {
                     throw new SQLSyntaxErrorException("Only one table name per DELETE.");
                 }
+                if (catalog.getTable(table) == null) {
+                    throw new SQLSyntaxErrorException("Invalid table name.");
+                }
                 Delete.run(table, "");
             } else {
+
                 String[] splitWhere = table.split("WHERE", 2);
                 if (splitWhere.length < 2) {
                     splitWhere = table.split("where", 2);
                 }
 
                 String tableName = splitWhere[0].strip();
-                String where = splitWhere[1].strip();
+                String where = splitWhere[1].strip().replace(";", "");
+                if (catalog.getTable(tableName) == null) {
+                    throw new SQLSyntaxErrorException("Invalid table name.");
+                }
                 Delete.run(tableName, where);
             }
 
