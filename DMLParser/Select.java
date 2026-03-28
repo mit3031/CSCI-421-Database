@@ -173,6 +173,9 @@ public class Select implements Command{
 
             // Create a temporary table, tableNameCounter is used in the case that there are 3 or more tables being
             // combined and there will be an instance where more than one temp table will need to be created
+            if (catalog.tableExists(TEMP_TABLE_NAME + tableNameCounter)){
+                storageManager.DropTable(catalog.getTable(TEMP_TABLE_NAME+tableNameCounter));
+            }
             TableSchema tempTable = new TableSchema(TEMP_TABLE_NAME + tableNameCounter, newAttributes);
             storageManager.CreateTable(tempTable);
 
