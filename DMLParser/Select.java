@@ -90,6 +90,21 @@ public class Select implements Command{
         return this.extractMiddleSection(str, start, end, false); 
     }
 
+    private void cleanupTempTable(String tableName) {
+        if (tableName != null) {
+            try {
+                Catalog catalog = Catalog.getInstance();
+                if (catalog.tableExists(tableName)) {
+                    TableSchema schemaToDrop = catalog.getTable(tableName);
+
+                    StorageManager.getStorageManager().DropTable(schemaToDrop);
+                }
+            } catch (Exception cleanupException) {
+                Common.Logger.log("Failed to clean up temp order table: " + cleanupException.getMessage());
+            }
+        }
+    }
+
     /**
      * Checks if a string is present within some string
      * @param str the original string
@@ -468,13 +483,14 @@ public class Select implements Command{
      * @return A ParseResult containing the new sorted table's name and a flag for cleanup
      */
     private ParseResult orderByParse(String orderSection, String tempTableName) throws SQLSyntaxErrorException {
+        String newTableName = null;
         try {
             // Resolves the attribute name (handles dot notation and ambiguity)
             String resolvedAttribute = resolveAttribute(orderSection, tempTableName);
 
             // Generate the new schema with the sorting attribute as the primary Key
             TableSchema newSchema = createTempTableSchema(tempTableName, resolvedAttribute);
-            String newTableName = newSchema.getTableName();
+            newTableName = newSchema.getTableName();
 
             // create the table in the storage manager
             StorageManager.getStorageManager().CreateTable(newSchema);
@@ -486,8 +502,10 @@ public class Select implements Command{
             return new ParseResult(newTableName, true);
 
         } catch (SQLSyntaxErrorException e) {
+            cleanupTempTable(newTableName);
             throw e;
         } catch (Exception e) {
+            cleanupTempTable(newTableName);
             throw new SQLSyntaxErrorException("Error during ORDER BY execution: " + e.getMessage());
         }
     }
