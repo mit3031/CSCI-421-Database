@@ -162,6 +162,8 @@ public class AlterTableAdd implements Command {
 
             //find start of old table
             Page pg = sm.selectFirstPage(tableName);
+            Catalog catalog = Catalog.getInstance();
+            int address = catalog.getAddressOfPage(TEMP_TABLE_NAME);
 
             //go through all pages
             while (pg != null) {
@@ -177,7 +179,7 @@ public class AlterTableAdd implements Command {
                     newRecords.add(rec);
                 }
                 //insert these records to new table
-                sm.insert(TEMP_TABLE_NAME, newRecords);
+                address = sm.insert(TEMP_TABLE_NAME, newRecords, address);
 
                 //move on to the next page of records from old table
                 int nextPage = pg.getNextPage();

@@ -38,6 +38,7 @@ public class Catalog {
      */
     private final Map<String, TableSchema> tables;
     private final String catalogPath;
+    private int firstFreeAddress;
 
     // NOTE: firstFreePage stored here for simplicity
     // May move to StorageManager metadata in later phases.
@@ -51,7 +52,7 @@ public class Catalog {
         // This ensures the directory exists before we try to save/load anything.
         File catalogFile = new File(dbPath);
         catalogFile.mkdirs();
-
+        this.firstFreeAddress = 0;
         this.pageSize = pageSize;      // Default if no file exists
         this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
     }
@@ -78,6 +79,9 @@ public class Catalog {
     public boolean hasFreePages() {
         return !this.firstFreePage.isEmpty();
     }
+
+    public int getFirstFreeAddress() {return firstFreeAddress;}
+    public void setFirstFreeAddress(int unusedAddress) {this.firstFreeAddress = unusedAddress;}
 
     public void addFirstFreePage(int pageAddress) {
         this.firstFreePage.addFirst(pageAddress);

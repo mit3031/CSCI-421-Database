@@ -40,7 +40,12 @@ public class JottQL {
     private static void shutdown() throws IOException {
         System.out.println("Shutting down the database...");
         StorageManager storageManager = StorageManager.getStorageManager();
-        storageManager.shutdown();
+        try {
+            storageManager.shutdown();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Super fail on shutdown");
+        }
         System.out.println("Database shutdown complete");
     }
 
@@ -108,7 +113,7 @@ public class JottQL {
                     Logger.log("Command Sent to DDL Parser");
                     ParserDDL.parseCommand(message);
 
-                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT")) {
+                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT") || keywords[0].equals("DELETE") || keywords[0].equals("UPDATE")) {
                     //DML parser handles
                     Logger.log(("Command Sent to DML Parser"));
                     try {

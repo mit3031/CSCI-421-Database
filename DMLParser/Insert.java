@@ -92,6 +92,7 @@ public class Insert implements Command {
             StorageManager store = StorageManager.getStorageManager();
             Set<String> pkValuesInBatch = new HashSet<>(); // keep batch duplicates
 
+            int address = catalog.getAddressOfPage(tableName);
             for (int i = 0; i < typedRows.size(); i++) {
                 List<Object> row = typedRows.get(i);
 
@@ -99,7 +100,7 @@ public class Insert implements Command {
                 checkPrimaryKeyViolations(tableName, attributes, row, pkValuesInBatch, i + 1);
 
                 // Insert the row
-                store.insertSingleRow(tableName, row);
+                address = store.insertSingleRow(tableName, row, address);
 
                 // Increment only after a successful insert
                 successCount++;
@@ -334,6 +335,10 @@ public class Insert implements Command {
     private void checkPrimaryKeyViolations(String tableName, List<Attribute> attributes,
                                            List<Object> row, Set<String> pkValuesInBatch,
                                            int rowNum) throws SQLSyntaxErrorException {
+
+        if (tableName.startsWith("$temp_order_")) {
+            return; // skip PK validation for temporary sorting tables
+        }
 
         // Find primary key column(s)
         List<Integer> pkIndices = new ArrayList<>();

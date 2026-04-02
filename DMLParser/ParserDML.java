@@ -3,9 +3,12 @@ package DMLParser;
 import java.sql.SQLSyntaxErrorException;
 import java.util.ArrayList;
 import java.util.List;
+
+import Catalog.Catalog;
 import Common.Command;
 import DMLParser.Insert;
 import DMLParser.Select;
+import StorageManager.StorageManager;
 import Common.Logger;
 
 public class ParserDML {
@@ -29,9 +32,11 @@ public class ParserDML {
                 // Start of quoted string
                 inQuotes = true;
                 quoteChar = c;
+                current.append(c);
             } else if (inQuotes && c == quoteChar) {
                 // End of quoted string
                 inQuotes = false;
+                current.append(c);
                 tokens.add(current.toString());
                 current = new StringBuilder();
             } else if (inQuotes) {
@@ -58,7 +63,7 @@ public class ParserDML {
     }
 
     public static boolean runCommand(String command)
-            throws SQLSyntaxErrorException {
+            throws Exception {
 
         // command should end with a semicolon
 
@@ -83,6 +88,47 @@ public class ParserDML {
             Command insert = new Insert();
             insert.run(insertTokens);
             return true;
+        } else if (commandLower.startsWith("update")) {
+            // Handle update specially to preserve quotes for the SET clause
+            Command update = new Update();
+            // Passing the raw command inside an array
+            update.run(new String[]{command});
+            return true;
+        } else if (commandLower.startsWith("delete")) {
+            if (!command.toLowerCase().contains("from")) {
+                throw new SQLSyntaxErrorException("DELETE statement missing FROM keyword.");
+            }
+            if (command.split("FROM").length <= 1) {
+                throw new SQLSyntaxErrorException("DELETE statement missing table name.");
+            }
+            Catalog catalog = Catalog.getInstance();
+            String table = command.split("FROM")[1].strip();
+
+            if (!command.toLowerCase().contains("where")) {
+                String[] check = table.split(" ");
+                if (check.length > 1) {
+                    throw new SQLSyntaxErrorException("Only one table name per DELETE.");
+                }
+                if (catalog.getTable(table) == null) {
+                    throw new SQLSyntaxErrorException("Invalid table name.");
+                }
+                Delete.run(table, "");
+            } else {
+
+                String[] splitWhere = table.split("WHERE", 2);
+                if (splitWhere.length < 2) {
+                    splitWhere = table.split("where", 2);
+                }
+
+                String tableName = splitWhere[0].strip();
+                String where = splitWhere[1].strip().replace(";", "");
+                if (catalog.getTable(tableName) == null) {
+                    throw new SQLSyntaxErrorException("Invalid table name.");
+                }
+                Delete.run(tableName, where);
+            }
+
+            return true;
         }
 
         // Use smart split for other commands (SELECT, etc.)
@@ -102,6 +148,12 @@ public class ParserDML {
                 select.run(commandSegments);
                 break;
             case "insert":
+                // Already handled above
+                break;
+            case "update":
+                // Already handled above
+                break;
+            case "delete":
                 // Already handled above
                 break;
             default:
@@ -142,11 +194,21 @@ public class ParserDML {
     }
 
     public static void main(String[] args){
+        args = new String[] {"--debug"}; 
         Logger.initDebug(args);
+
+        String dbPath = "ParserTestDB";
+
+        try{
+            StorageManager.initDatabase(dbPath, 4096, 20);
+        }catch (Exception e){}
+
         try {
-            ParserDML.runCommand("SElect * from pupppies;");
+            ParserDML.runCommand("SELECT a, b, c FROM t1, t2 WHERE a = 5 and d > 5 ORDERING BY d;");
         } catch (SQLSyntaxErrorException e) {
             System.out.println("Error: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
