@@ -1,6 +1,9 @@
 package Catalog;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import AttributeInfo.Attribute;
 
 public class TableSchema {
@@ -8,11 +11,15 @@ public class TableSchema {
     private List<Attribute> attributes;
     private int rootPageID;
 
+    // Map to hold indexes. Key is attribute name
+    private Map<String, BTreeSchema> indexes;
+
     // Constructor used by Parsers/Executors. PageID is set to default because yall don't have access to that info from there
     public TableSchema(String tableName, List<Attribute> attributes) {
         this.tableName = tableName;
         this.attributes = attributes;
         this.rootPageID = -1; // default value when table is created. Means that a page ID has not been allocated to this yet
+        this.indexes = new HashMap<>();
     }
 
     // This 2nd constructor is for the Catalog itself. Specifically when the loadDisk function
@@ -20,6 +27,7 @@ public class TableSchema {
         this.tableName = tableName.toLowerCase();
         this.attributes = attributes;
         this.rootPageID = rootPageID;
+        this.indexes = new HashMap<>();
     }
     public String getTableName() {
         return tableName;
@@ -78,4 +86,16 @@ public class TableSchema {
         tableName = newTableName.toLowerCase();
     }
 
+    public void addIndex(String attributeName, BTreeSchema bTree) {
+        // Called if Catalog.getInstance().getIndexingEnabled() is true
+        this.indexes.put(attributeName.toLowerCase(), bTree);
+    }
+
+    public BTreeSchema getIndex(String attributeName) {
+        return this.indexes.get(attributeName.toLowerCase());
+    }
+
+    public Map<String, BTreeSchema> getAllIndexes() {
+        return this.indexes;
+    }
 }

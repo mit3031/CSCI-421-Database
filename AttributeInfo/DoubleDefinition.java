@@ -2,8 +2,8 @@ package AttributeInfo;
 
 public class DoubleDefinition extends AttributeDefinition {
 
-    public DoubleDefinition(boolean isPrimary, boolean possibleNull) {
-        super(AttributeTypeEnum.DOUBLE, isPrimary, possibleNull);
+    public DoubleDefinition(boolean isPrimary, boolean possibleNull, boolean isUnique) {
+        super(AttributeTypeEnum.DOUBLE, isPrimary, possibleNull, isUnique);
     }
 
     private static boolean isDouble(String s) {

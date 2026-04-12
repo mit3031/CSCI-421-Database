@@ -9,18 +9,22 @@ public abstract class AttributeDefinition {
     private final boolean isPrimary;
     private final boolean possibleNull;
 
-    public AttributeDefinition(final AttributeTypeEnum type, final boolean isPrimary, final boolean possibleNull){
+    protected boolean isUnique;
+
+    public AttributeDefinition(final AttributeTypeEnum type, final boolean isPrimary, final boolean possibleNull, boolean isUnique){
         this.type = type;
         this.isPrimary = isPrimary;
         this.possibleNull = possibleNull;
         this.maxLength = null;
+        this.isUnique = isUnique;
     }
 
-    public AttributeDefinition(final AttributeTypeEnum type, final boolean isPrimary, final boolean possibleNull, final Integer maxLength){
+    public AttributeDefinition(final AttributeTypeEnum type, final boolean isPrimary, final boolean possibleNull, final Integer maxLength, final boolean isUnique){
         this.type = type;
         this.isPrimary = isPrimary;
         this.possibleNull = possibleNull;
         this.maxLength = maxLength;
+        this.isUnique = isUnique;
     }
 
     public AttributeTypeEnum getType(){
@@ -38,6 +42,8 @@ public abstract class AttributeDefinition {
     public Integer getMaxLength(){
         return this.maxLength;
     }
+
+    public boolean getIsUnique() { return isUnique; }
 
     // returns whether or not a string is of this type
     public abstract boolean isType(String obj);

@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class VarCharDefinition extends AttributeDefinition {
 
-    public VarCharDefinition(boolean isPrimary, boolean possibleNull, int maxLength) {
-        super(AttributeTypeEnum.VARCHAR, isPrimary, possibleNull, maxLength);
+    public VarCharDefinition(boolean isPrimary, boolean possibleNull, int maxLength, boolean isUnique) {
+        super(AttributeTypeEnum.VARCHAR, isPrimary, possibleNull, maxLength,isUnique);
     }
 
     @Override

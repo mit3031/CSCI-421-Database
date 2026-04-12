@@ -47,7 +47,7 @@ public class SelectOrderByTest {
         try {
             // Initialize the database
             System.out.println("=== Initializing Database ===");
-            StorageManager.initDatabase(dbPath, 4096, 20);
+            StorageManager.initDatabase(dbPath, 4096, 20,false);
             StorageManager store = StorageManager.getStorageManager();
             Catalog catalog = Catalog.getInstance();
             System.out.println("Database initialized successfully!\n");
@@ -55,9 +55,9 @@ public class SelectOrderByTest {
             // ========== Create grades table ==========
             System.out.println("=== Creating Grades Table ===");
             List<Attribute> gradesAttributes = new ArrayList<>();
-            gradesAttributes.add(new Attribute("student_id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            gradesAttributes.add(new Attribute("score", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
-            gradesAttributes.add(new Attribute("grade", new VarCharDefinition(false, false, 2)));
+            gradesAttributes.add(new Attribute("student_id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            gradesAttributes.add(new Attribute("score", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false)));
+            gradesAttributes.add(new Attribute("grade", new VarCharDefinition(false, false, 2,false)));
             
             TableSchema gradesTable = new TableSchema("grades", gradesAttributes);
             store.CreateTable(gradesTable);
@@ -101,9 +101,9 @@ public class SelectOrderByTest {
             // ========== Create products table ==========
             System.out.println("=== Creating Products Table ===");
             List<Attribute> productsAttributes = new ArrayList<>();
-            productsAttributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            productsAttributes.add(new Attribute("name", new VarCharDefinition(false, false, 50)));
-            productsAttributes.add(new Attribute("price", new DoubleDefinition(false, false)));
+            productsAttributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            productsAttributes.add(new Attribute("name", new VarCharDefinition(false, false, 50,false)));
+            productsAttributes.add(new Attribute("price", new DoubleDefinition(false, false,false)));
             
             TableSchema productsTable = new TableSchema("products", productsAttributes);
             store.CreateTable(productsTable);
@@ -141,10 +141,10 @@ public class SelectOrderByTest {
             // ========== Create AxB cartesian product simulation table ==========
             System.out.println("=== Creating AxB Table (Cartesian Product Simulation) ===");
             List<Attribute> axbAttributes = new ArrayList<>();
-            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
-            axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
-            axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50)));
+            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false)));
+            axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false)));
+            axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50,false)));
             
             TableSchema axbTable = new TableSchema("axb", axbAttributes);
             store.CreateTable(axbTable);

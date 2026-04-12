@@ -65,7 +65,7 @@ public class UpdateTest {
             // Clean up any existing database to ensure a fresh test run
             cleanupDatabase("updatetestdb");
 
-            StorageManager.initDatabase("updatetestdb", 4096, 20);
+            StorageManager.initDatabase("updatetestdb", 4096, 20,false);
             StorageManager store = StorageManager.getStorageManager();
 
             System.out.println("\n========================================");
@@ -77,10 +77,10 @@ public class UpdateTest {
             // ============================================================
             System.out.println("SETUP: Creating 'employees' table and inserting initial data...");
             List<Attribute> empAttrs = new ArrayList<>();
-            empAttrs.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false))); // PK, Not Null
-            empAttrs.add(new Attribute("name", new VarCharDefinition(false, false, 50)));                     // Not Null
-            empAttrs.add(new Attribute("salary", new DoubleDefinition(false, false)));                        // Not Null
-            empAttrs.add(new Attribute("bonus", new DoubleDefinition(false, true)));                          // Nullable
+            empAttrs.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false))); // PK, Not Null
+            empAttrs.add(new Attribute("name", new VarCharDefinition(false, false, 50,false)));                     // Not Null
+            empAttrs.add(new Attribute("salary", new DoubleDefinition(false, false,false)));                        // Not Null
+            empAttrs.add(new Attribute("bonus", new DoubleDefinition(false, true,false)));                          // Nullable
 
             TableSchema empTable = new TableSchema("employees", empAttrs);
             store.CreateTable(empTable);

@@ -200,7 +200,7 @@ public class ParserDML {
         String dbPath = "ParserTestDB";
 
         try{
-            StorageManager.initDatabase(dbPath, 4096, 20);
+            StorageManager.initDatabase(dbPath, 4096, 20,false);
         }catch (Exception e){}
 
         try {

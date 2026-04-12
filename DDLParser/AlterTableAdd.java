@@ -66,6 +66,8 @@ public class AlterTableAdd implements Command {
         }
         String defaultValue = null;
         boolean notNull = false;
+        boolean isUnique = false;
+
         //now we can get rest of info about this
         for(int i = 6; i<command.length; i++) {
             String token = command[i];
@@ -80,6 +82,8 @@ public class AlterTableAdd implements Command {
 
             if(token.equals("NOTNULL")) {
                 notNull = true;
+            } else if (token.equals("UNIQUE")) {
+                isUnique = true;
             }
             else if(token.equals("DEFAULT")) {
                 i++;
@@ -108,18 +112,18 @@ public class AlterTableAdd implements Command {
         //define our attribute
         AttributeDefinition def;
         if(attType.equals("INTEGER")){
-            def = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, !notNull);
+            def = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, !notNull,isUnique);
             defCast = (defaultValue!=null) ? Integer.parseInt(defaultValue) : null;
         } else if (attType.equals("DOUBLE")) {
-            def = new DoubleDefinition(false, !notNull);
+            def = new DoubleDefinition(false, !notNull,isUnique);
             defCast = (defaultValue!=null) ? Double.parseDouble(defaultValue) : null;
         } else if (attType.equals("BOOLEAN")) {
-            def = new BooleanDefinition(false, !notNull);
+            def = new BooleanDefinition(false, !notNull,isUnique);
             defCast = (defaultValue!=null) ? Boolean.parseBoolean(defaultValue) : null;
         } else if (attType.startsWith("CHAR")){
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len =  Integer.parseInt(lenStr);
-            def = new CharDefinition(false, !notNull, len);
+            def = new CharDefinition(false, !notNull, len,isUnique);
             // Strip quotes from CHAR default value for storage
             if (defaultValue != null && defaultValue.length() >= 2 &&
                 ((defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) ||
@@ -131,7 +135,7 @@ public class AlterTableAdd implements Command {
         } else if (attType.startsWith("VARCHAR")){
             String lenStr = attType.substring(attType.indexOf("(") + 1, attType.indexOf(")"));
             int len = Integer.parseInt(lenStr);
-            def = new VarCharDefinition(false, !notNull, len);
+            def = new VarCharDefinition(false, !notNull, len,isUnique);
             // Strip quotes from VARCHAR default value for storage
             if (defaultValue != null && defaultValue.length() >= 2 &&
                 ((defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) ||

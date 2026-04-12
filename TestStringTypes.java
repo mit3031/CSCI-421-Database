@@ -16,7 +16,7 @@ public class TestStringTypes {
         int totalTests = 0;
         
         try {
-            StorageManager.initDatabase("teststringdb", 400, 10);
+            StorageManager.initDatabase("teststringdb", 400, 10,false);
             StorageManager store = StorageManager.getStorageManager();
             
             System.out.println("\n========================================");
@@ -31,9 +31,9 @@ public class TestStringTypes {
             System.out.println("--------------------");
             try {
                 List<Attribute> attrs1 = new ArrayList<>();
-                attrs1.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-                attrs1.add(new Attribute("name", new VarCharDefinition(false, false, 50), null));
-                attrs1.add(new Attribute("email", new VarCharDefinition(false, false, 100), null));
+                attrs1.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+                attrs1.add(new Attribute("name", new VarCharDefinition(false, false, 50,false), null));
+                attrs1.add(new Attribute("email", new VarCharDefinition(false, false, 100,false), null));
                 
                 TableSchema table1 = new TableSchema("VarCharTable", attrs1);
                 store.CreateTable(table1);
@@ -97,9 +97,9 @@ public class TestStringTypes {
             System.out.println("--------------------");
             try {
                 List<Attribute> attrs2 = new ArrayList<>();
-                attrs2.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-                attrs2.add(new Attribute("code", new CharDefinition(false, false, 5), null));
-                attrs2.add(new Attribute("status", new CharDefinition(false, false, 1), null));
+                attrs2.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+                attrs2.add(new Attribute("code", new CharDefinition(false, false, 5,false), null));
+                attrs2.add(new Attribute("status", new CharDefinition(false, false, 1,false), null));
                 
                 TableSchema table2 = new TableSchema("CharTable", attrs2);
                 store.CreateTable(table2);
@@ -162,11 +162,11 @@ public class TestStringTypes {
             System.out.println("--------------------");
             try {
                 List<Attribute> attrs3 = new ArrayList<>();
-                attrs3.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-                attrs3.add(new Attribute("name", new VarCharDefinition(false, false, 30), null));
-                attrs3.add(new Attribute("score", new DoubleDefinition(false, false), null));
-                attrs3.add(new Attribute("active", new BooleanDefinition(false, false), null));
-                attrs3.add(new Attribute("grade", new CharDefinition(false, false, 1), null));
+                attrs3.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+                attrs3.add(new Attribute("name", new VarCharDefinition(false, false, 30,false), null));
+                attrs3.add(new Attribute("score", new DoubleDefinition(false, false,false), null));
+                attrs3.add(new Attribute("active", new BooleanDefinition(false, false,false), null));
+                attrs3.add(new Attribute("grade", new CharDefinition(false, false, 1,false), null));
                 
                 TableSchema table3 = new TableSchema("MixedTable", attrs3);
                 store.CreateTable(table3);
@@ -217,8 +217,8 @@ public class TestStringTypes {
             System.out.println("--------------------");
             try {
                 List<Attribute> attrs4 = new ArrayList<>();
-                attrs4.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-                attrs4.add(new Attribute("description", new VarCharDefinition(false, false, 200), null));
+                attrs4.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+                attrs4.add(new Attribute("description", new VarCharDefinition(false, false, 200,false), null));
                 
                 TableSchema table4 = new TableSchema("VarLengthTable", attrs4);
                 store.CreateTable(table4);
@@ -288,9 +288,9 @@ public class TestStringTypes {
             System.out.println("--------------------");
             try {
                 List<Attribute> attrs5 = new ArrayList<>();
-                attrs5.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-                attrs5.add(new Attribute("username", new VarCharDefinition(false, false, 20), null));
-                attrs5.add(new Attribute("code", new CharDefinition(false, false, 3), null));
+                attrs5.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+                attrs5.add(new Attribute("username", new VarCharDefinition(false, false, 20,false), null));
+                attrs5.add(new Attribute("code", new CharDefinition(false, false, 3,false), null));
                 
                 TableSchema table5 = new TableSchema("LargeBatchStrings", attrs5);
                 store.CreateTable(table5);

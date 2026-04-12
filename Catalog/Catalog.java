@@ -14,10 +14,12 @@ public class Catalog {
     This keeps the catalog as a singleton (aka only one catalog can exist)
      */
     private static Catalog instance;
+    // Phase 3 indexing on or off
+    private boolean indexingEnabled;
 
-    public static void init(String dbPath, int pageSize) {
+    public static void init(String dbPath, int pageSize, boolean indexingEnabled) {
         if (instance == null) {
-            instance = new Catalog(dbPath, pageSize);
+            instance = new Catalog(dbPath, pageSize, indexingEnabled);
         }
     }
 
@@ -45,7 +47,7 @@ public class Catalog {
     private int pageSize;        // Required for DB restart
     private LinkedList<Integer> firstFreePage;   // list of empty pages
 
-    private Catalog(String dbPath, int pageSize) {
+    private Catalog(String dbPath, int pageSize, boolean indexingEnabled) {
         this.tables = new HashMap<>();
         this.catalogPath = dbPath + "/catalog.bin";
 
@@ -55,11 +57,16 @@ public class Catalog {
         this.firstFreeAddress = 0;
         this.pageSize = pageSize;      // Default if no file exists
         this.firstFreePage = new LinkedList<Integer>();       // by default empty list of pages
+        this.indexingEnabled = indexingEnabled; // Indexing flag
     }
 
     /*
     Getters and setters for page info
      */
+    public boolean getIndexingEnabled() {
+        return this.indexingEnabled;
+    }
+
     public void setPageSize(int pageSize) {this.pageSize = pageSize;}
 
     public int getPageSize(){
@@ -182,5 +189,18 @@ public class Catalog {
 
     public String getCatalogPath(){ return this.catalogPath;}
 
+    /**
+     * Calculates the order n of a B+ tree based on page size and attribute type
+     * n is the maximum number of pointers a node can hold
+     * Formula: n = floor(PageSize / (SearchKeySize + PointerSize))
+     */
+    public int calculateTreeOrder(AttributeDefinition def) {
+        int pageSize = this.pageSize;
+        int pointerSize = 4;
+        int searchKeySize = def.getByteSize();
 
+        int n = pageSize / (searchKeySize + pointerSize);
+
+        return n;
+    }
 }

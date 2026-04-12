@@ -64,7 +64,7 @@ public class FullParserTest {
             // Clean up any existing database
             cleanupDatabase("fulltestdb");
             
-            StorageManager.initDatabase("fulltestdb", 4096, 10);
+            StorageManager.initDatabase("fulltestdb", 4096, 10,false);
             StorageManager store = StorageManager.getStorageManager();
             
             testHeader("FULL PARSER TEST - Simulating csci421_sample_1.txt");

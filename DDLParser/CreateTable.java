@@ -52,6 +52,7 @@ public class CreateTable implements Command {
                 boolean primary = false;
                 boolean notNull = false;
                 int maxlength = 0;
+                boolean isUnique = false;
                 
                 // Split this attribute definition by whitespace
                 String[] tokens = attrDef.trim().split("\\s+");
@@ -65,6 +66,8 @@ public class CreateTable implements Command {
                         pKeyCount++;
                     } else if (token.equals("NOTNULL")) {
                         notNull = true;
+                    } else if (token.equals("UNIQUE")) {
+                        isUnique = true;
                     } else if (token.equals("INTEGER")) {
                         type = AttributeTypeEnum.INTEGER;
                     } else if (token.equals("DOUBLE")) {
@@ -91,15 +94,15 @@ public class CreateTable implements Command {
                 //TODO Make attribute and then add
                 AttributeDefinition definition;
                 if (type == AttributeTypeEnum.INTEGER){
-                    definition = new IntegerDefinition(type, primary, !notNull);
+                    definition = new IntegerDefinition(type, primary, !notNull,isUnique);
                 } else if (type == AttributeTypeEnum.DOUBLE) {
-                    definition = new DoubleDefinition(primary, !notNull);
+                    definition = new DoubleDefinition(primary, !notNull,isUnique);
                 } else if (type == AttributeTypeEnum.BOOLEAN){
-                    definition = new BooleanDefinition(primary, !notNull);
+                    definition = new BooleanDefinition(primary, !notNull,isUnique);
                 } else if (type == AttributeTypeEnum.CHAR){
-                    definition = new CharDefinition(primary, !notNull, maxlength);
+                    definition = new CharDefinition(primary, !notNull, maxlength,isUnique);
                 } else if (type == AttributeTypeEnum.VARCHAR) {
-                    definition = new VarCharDefinition(primary, !notNull, maxlength);
+                    definition = new VarCharDefinition(primary, !notNull, maxlength,isUnique);
                 } else{
                     Logger.log("Create Table found an attribute with no definition!");
                     definition = null;

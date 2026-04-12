@@ -3,6 +3,7 @@ package StorageManager;
 import AttributeInfo.*;
 import Common.Page;
 import Catalog.TableSchema;
+import Catalog.BTreeSchema;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -699,6 +700,7 @@ public class BufferManager {
                     // Write constraints
                     out.writeBoolean(def.getIsPrimary());
                     out.writeBoolean(def.getIsPossibleNull());
+                    out.writeBoolean(def.getIsUnique());
 
                     // Write max length
                     if (def.getMaxLength() == null) {
@@ -714,6 +716,24 @@ public class BufferManager {
                     } else {
                         out.writeBoolean(false);          // no default value
                     }
+                }
+
+                Map<String, BTreeSchema> indexes = table.getAllIndexes();
+                out.writeInt(indexes.size()); // writes how many indexes exist
+
+                // Loops through the keys, attribute names, in the map
+                for (String indexName : indexes.keySet()) {
+                    BTreeSchema bTree = indexes.get(indexName);
+
+                    // Write the name of the column being indexed
+                    out.writeUTF(indexName);
+
+                    out.writeInt(bTree.getRootNodeAddress());
+                    out.writeInt(bTree.getTreeOrderN());
+                    out.writeBoolean(bTree.getIsPrimaryKey());
+                    out.writeBoolean(bTree.getHasNull());
+
+                    out.writeInt(getEnumCode(bTree.getIndexedType()));
                 }
             }
 
@@ -794,6 +814,7 @@ public class BufferManager {
                     // Read constraints
                     boolean isPrimary = in.readBoolean();
                     boolean isNullable = in.readBoolean();
+                    boolean isUnique = in.readBoolean();
 
                     // Read max length
                     int rawMaxLen = in.readInt();
@@ -817,21 +838,21 @@ public class BufferManager {
                     AttributeDefinition def;
 
                     if (type == AttributeTypeEnum.INTEGER) {
-                        def = new IntegerDefinition(AttributeTypeEnum.INTEGER, isPrimary, isNullable);
+                        def = new IntegerDefinition(AttributeTypeEnum.INTEGER, isPrimary, isNullable, isUnique);
 
                     } else if (type == AttributeTypeEnum.DOUBLE) {
-                        def = new DoubleDefinition(isPrimary, isNullable);
+                        def = new DoubleDefinition(isPrimary, isNullable,isUnique);
 
                     } else if (type == AttributeTypeEnum.BOOLEAN) {
-                        def = new BooleanDefinition(isPrimary, isNullable);
+                        def = new BooleanDefinition(isPrimary, isNullable,isUnique);
 
                     } else if (type == AttributeTypeEnum.CHAR) {
                         // chars use the maxLen we read from the disk
-                        def = new CharDefinition(isPrimary, isNullable, maxLen);
+                        def = new CharDefinition(isPrimary, isNullable, maxLen,isUnique);
 
                     } else if (type == AttributeTypeEnum.VARCHAR) {
                         // varchars also uses the maxLen
-                        def = new VarCharDefinition(isPrimary, isNullable, maxLen);
+                        def = new VarCharDefinition(isPrimary, isNullable, maxLen,isUnique);
 
                     } else {
                         // This should only happen if the file is corrupted or a new type was added

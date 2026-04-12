@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class BooleanDefinition extends AttributeDefinition {
 
-    public BooleanDefinition(boolean isPrimary, boolean possibleNull) {
-        super(AttributeTypeEnum.BOOLEAN, isPrimary, possibleNull);
+    public BooleanDefinition(boolean isPrimary, boolean possibleNull, boolean isUnique) {
+        super(AttributeTypeEnum.BOOLEAN, isPrimary, possibleNull, isUnique);
     }
 
     private static boolean isBoolean(String s) {

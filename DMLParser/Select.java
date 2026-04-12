@@ -395,19 +395,19 @@ public class Select implements Command{
             switch (oldDef.getType()) {
                 case INTEGER:
                     // IntegerDefinition is the only one that requires the type enum passed in
-                    newDef = new IntegerDefinition(oldDef.getType(), newIsPrimary, newPossibleNull);
+                    newDef = new IntegerDefinition(oldDef.getType(), newIsPrimary, newPossibleNull,false);
                     break;
                 case DOUBLE:
-                    newDef = new DoubleDefinition(newIsPrimary, newPossibleNull);
+                    newDef = new DoubleDefinition(newIsPrimary, newPossibleNull,false);
                     break;
                 case BOOLEAN:
-                    newDef = new BooleanDefinition(newIsPrimary, newPossibleNull);
+                    newDef = new BooleanDefinition(newIsPrimary, newPossibleNull,false);
                     break;
                 case CHAR:
-                    newDef = new CharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength());
+                    newDef = new CharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength(),false);
                     break;
                 case VARCHAR:
-                    newDef = new VarCharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength());
+                    newDef = new VarCharDefinition(newIsPrimary, newPossibleNull, oldDef.getMaxLength(),false);
                     break;
             }
 

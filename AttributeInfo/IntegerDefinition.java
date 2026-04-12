@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class IntegerDefinition extends AttributeDefinition{
 
-    public IntegerDefinition(AttributeTypeEnum type, boolean isPrimary, boolean possibleNull) {
-        super(AttributeTypeEnum.INTEGER, isPrimary, possibleNull);
+    public IntegerDefinition(AttributeTypeEnum type, boolean isPrimary, boolean possibleNull, boolean isUnique) {
+        super(AttributeTypeEnum.INTEGER, isPrimary, possibleNull,isUnique);
     }
 
     private static boolean isInteger(String s) {

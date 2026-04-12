@@ -35,16 +35,16 @@ public class CatalogTest {
         }
 
         // STEP 1: Initialize catalog
-        Catalog.init("./testDB", 4096); // pageSize 4096
+        Catalog.init("./testDB", 4096,false); // pageSize 4096
         Catalog catalog = Catalog.getInstance();
 
         // STEP 2: Create table schema
         List<Attribute> attrs = new ArrayList<>();
-        AttributeDefinition intDef = new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false);
+        AttributeDefinition intDef = new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false);
         Attribute a1 = new Attribute("id", intDef, null);
         attrs.add(a1);
 
-        AttributeDefinition varcharDef = new VarCharDefinition(false, true, 10);
+        AttributeDefinition varcharDef = new VarCharDefinition(false, true, 10,false);
         Attribute a2 = new Attribute("name", varcharDef, "NULL");
         attrs.add(a2);
 
@@ -81,7 +81,7 @@ public class CatalogTest {
         Catalog.resetForTesting();
 
         // STEP 8: Cold restart
-        Catalog.init("./testDB", 8192); // different pageSize argument
+        Catalog.init("./testDB", 8192,false); // different pageSize argument
         Catalog freshCatalog = Catalog.getInstance();
 
         // STEP 9: Page size should persist from original
@@ -110,17 +110,17 @@ public class CatalogTest {
         // STEP 12: Test ALTER TABLE ADD Attribute
         // Simulate: ALTER TABLE myTable ADD age INTEGER DEFAULT 18
         Catalog.resetForTesting();
-        Catalog.init("./testDB", 4096);
+        Catalog.init("./testDB", 4096,false);
         Catalog alterCatalog = Catalog.getInstance();
 
         // Create a new table to test altering
         List<Attribute> alterAttrs = new ArrayList<>();
-        alterAttrs.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false), null));
+        alterAttrs.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false), null));
         TableSchema alterTable = new TableSchema("alterTable", alterAttrs);
         alterCatalog.addTable(alterTable);
 
         // Add the new column
-        AttributeDefinition ageDef = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false);
+        AttributeDefinition ageDef = new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false);
         Attribute ageAttr = new Attribute("age", ageDef, "18");
         alterTable.addAttribute(ageAttr);
         //alterCatalog.saveToDisk(); // Persist the change

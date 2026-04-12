@@ -56,7 +56,7 @@ public class SelectParseTest {
         try {
             // Initialize the database
             System.out.println("=== Initializing Database ===");
-            StorageManager.initDatabase(dbPath, 4096, 20);
+            StorageManager.initDatabase(dbPath, 4096, 20,false);
             StorageManager store = StorageManager.getStorageManager();
             Catalog catalog = Catalog.getInstance();
             System.out.println("Database initialized successfully!\n");
@@ -66,8 +66,8 @@ public class SelectParseTest {
             
             // Create attributes
             List<Attribute> attributes = new ArrayList<>();
-            attributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            attributes.add(new Attribute("name", new VarCharDefinition(false, false, 50)));
+            attributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            attributes.add(new Attribute("name", new VarCharDefinition(false, false, 50,false)));
             
             // Create table schema
             TableSchema studentsTable = new TableSchema("students", attributes);
@@ -117,8 +117,8 @@ public class SelectParseTest {
             
             // Create attributes for courses table
             List<Attribute> courseAttributes = new ArrayList<>();
-            courseAttributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            courseAttributes.add(new Attribute("title", new VarCharDefinition(false, false, 100)));
+            courseAttributes.add(new Attribute("id", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            courseAttributes.add(new Attribute("title", new VarCharDefinition(false, false, 100,false)));
             
             // Create table schema
             TableSchema coursesTable = new TableSchema("courses", courseAttributes);
@@ -151,10 +151,10 @@ public class SelectParseTest {
             // where A has (x, y) and B has (x, q)
             // Result would have qualified attributes: a.x, a.y, b.x, b.q
             List<Attribute> axbAttributes = new ArrayList<>();
-            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false)));
-            axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
-            axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false)));
-            axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50)));
+            axbAttributes.add(new Attribute("a.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, true, false,false)));
+            axbAttributes.add(new Attribute("a.y", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false)));
+            axbAttributes.add(new Attribute("b.x", new IntegerDefinition(AttributeTypeEnum.INTEGER, false, false,false)));
+            axbAttributes.add(new Attribute("b.q", new VarCharDefinition(false, false, 50,false)));
             
             // Create table schema with primary key on first attribute
             TableSchema axbTable = new TableSchema("axb", axbAttributes);

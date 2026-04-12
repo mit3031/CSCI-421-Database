@@ -15,16 +15,16 @@ public class Test200Rows {
         Logger.initDebug(debugActive);
         
         try {
-            StorageManager.initDatabase("test200db", 400, 10);
+            StorageManager.initDatabase("test200db", 400, 10,false);
             StorageManager store = StorageManager.getStorageManager();
             
             System.out.println("\n=== Testing 200 Row Insert ===\n");
             
             // Create table
             List<Attribute> attrs = new ArrayList<>();
-            attrs.add(new Attribute("id", new IntegerDefinition(null, true, false), null));
-            attrs.add(new Attribute("value", new IntegerDefinition(null, false, false), null));
-            attrs.add(new Attribute("squared", new IntegerDefinition(null, false, false), null));
+            attrs.add(new Attribute("id", new IntegerDefinition(null, true, false,false), null));
+            attrs.add(new Attribute("value", new IntegerDefinition(null, false, false,false), null));
+            attrs.add(new Attribute("squared", new IntegerDefinition(null, false, false,false), null));
             
             TableSchema table = new TableSchema("Test200", attrs);
             store.CreateTable(table);

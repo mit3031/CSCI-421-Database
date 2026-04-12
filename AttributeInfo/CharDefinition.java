@@ -4,8 +4,8 @@ import java.util.Objects;
 
 public class CharDefinition extends AttributeDefinition {
 
-    public CharDefinition(boolean isPrimary, boolean possibleNull, int maxLength) {
-        super(AttributeTypeEnum.CHAR, isPrimary, possibleNull, maxLength);
+    public CharDefinition(boolean isPrimary, boolean possibleNull, int maxLength, boolean isUnique) {
+        super(AttributeTypeEnum.CHAR, isPrimary, possibleNull, maxLength, isUnique);
     }
 
     @Override

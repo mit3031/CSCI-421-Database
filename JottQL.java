@@ -18,7 +18,7 @@ public class JottQL {
     private static void startUp(String dbLocation, int pageSize, int bufferSize,
                                         boolean indexing, boolean debug){
         try {
-            StorageManager.initDatabase(dbLocation, pageSize, bufferSize);
+            StorageManager.initDatabase(dbLocation, pageSize, bufferSize,indexing);
             StorageManager storageManager = StorageManager.getStorageManager();
             storageManager.bootup();
             if(debug){
