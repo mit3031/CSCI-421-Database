@@ -866,6 +866,30 @@ public class BufferManager {
 
                 // Rebuilds the table schema and add it to the catalog
                 TableSchema schema = new TableSchema(tableName, attrs, rootPageID);
+
+                int numIndexes = in.readInt();
+
+                for (int k = 0; k < numIndexes; k++) {
+                    String indexName = in.readUTF();
+                    int rootNode = in.readInt();
+                    int treeOrder = in.readInt();
+                    boolean isPrimaryIndex = in.readBoolean();
+                    boolean hasNullIndex = in.readBoolean();
+
+                    // Convert the integer code back to the enum
+                    int typeCodeIndex = in.readInt();
+                    AttributeTypeEnum indexedType = getEnumFromCode(typeCodeIndex);
+
+                    // Recreates the Btree metadata
+                    BTreeSchema loadedBTree = new BTreeSchema(treeOrder, isPrimaryIndex, hasNullIndex, indexedType);
+
+                    // Set the root node
+                    loadedBTree.setRootNodeAddress(rootNode);
+
+                    // Attach it to the table schema
+                    schema.addIndex(indexName, loadedBTree);
+                }
+
                 catalog.addTable(schema);
             }
 
