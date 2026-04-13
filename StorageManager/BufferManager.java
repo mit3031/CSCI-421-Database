@@ -1,6 +1,7 @@
 package StorageManager;
 
 import AttributeInfo.*;
+import Common.BTreeNode;
 import Common.Page;
 import Catalog.TableSchema;
 import Catalog.BTreeSchema;
@@ -12,11 +13,12 @@ import java.time.Instant;
 import java.util.*;
 
 import Catalog.Catalog;
+import Common.Pages;
 
 import static AttributeInfo.AttributeTypeEnum.VARCHAR;
 
 public class BufferManager {
-    private final Map<Integer, Page> bufferPages;
+    private final Map<Integer, Pages> bufferPages;
     private static BufferManager bufferManager;
     private int bufferSize;
     private final String dbLocation;
@@ -53,7 +55,7 @@ public class BufferManager {
         Catalog catalog = Catalog.getInstance();
         int pageAddress = catalog.getAddressOfPage(tableName);
         //set all fields to blank and set modified to true
-        Page page = this.bufferPages.get(pageAddress);
+        Page page = (Page) this.bufferPages.get(pageAddress);
         if (page == null) {
             if (this.bufferPages.size()+1 > this.bufferSize) {
                 removeLRUPage();
@@ -65,7 +67,7 @@ public class BufferManager {
         //while there is a next page set it's tableName to null signifying empty
         while (page.getNextPage() != -1) {
             pageAddress = page.getNextPage();
-            page = this.bufferPages.get(pageAddress);
+            page = (Page) this.bufferPages.get(pageAddress);
             if (page == null) {
                 if (this.bufferPages.size()+1 > this.bufferSize) {
                     removeLRUPage();
@@ -409,9 +411,13 @@ public class BufferManager {
      * Flush all modified pages to disk
      */
     public void flushAllPages() throws IOException {
-        for (Page page : bufferPages.values()) {
+        for (Pages page : bufferPages.values()) {
             if (page.getModified()) {
-                writePage(page);
+                if (page instanceof Page) {
+                    writePage((Page) page);
+                } else {
+                    writeBTreeNode((BTreeNode) page);
+                }
                 page.SetModified(false);
             }
         }
@@ -426,7 +432,7 @@ public class BufferManager {
         Integer leastRecentlyUsedPage = null;
         Instant leastRecentlyUsedTime = null;
         for (Integer address : this.bufferPages.keySet()) {
-            Page page = this.bufferPages.get(address);
+            Pages page = this.bufferPages.get(address);
             if (leastRecentlyUsedPage == null) {
                 leastRecentlyUsedTime = page.getLastUsed();
                 leastRecentlyUsedPage = address;
@@ -449,14 +455,18 @@ public class BufferManager {
             return; // Nothing to remove
         }
         Integer lruPage = getLeastRecentlyUsedPage();
-        Page page = bufferPages.get(lruPage);
+        Pages page = bufferPages.get(lruPage);
         if (page == null) {
             return; // Page already removed
         }
         this.bufferPages.remove(lruPage);
         //writes page after removal if modified
         if (page.getModified()) {
-            writePage(page);
+            if (page instanceof Page) {
+                writePage((Page) page);
+            } else {
+                writeBTreeNode((BTreeNode)page);
+            }
         }
     }
 
@@ -476,7 +486,46 @@ public class BufferManager {
         page.updateLastUsed();
     }
 
-    //Do not call buffer manager handles this
+    //DO NOT CALL buffer manager handles this
+    private void writeBTreeNode(BTreeNode treeNode) throws FileNotFoundException {
+        try (RandomAccessFile currentNode = new RandomAccessFile(dbLocation, "rw")) {
+            currentNode.seek(treeNode.getPageAddress());
+            if (treeNode.getMyParent() == null) {
+                Catalog catalog = Catalog.getInstance();
+                catalog.addFirstFreePage(treeNode.getPageAddress());
+                for(int i = 0; i<catalog.getPageSize(); i++){
+                    currentNode.write((byte)0);
+                }
+                return; // Exit early after writing empty page
+            }
+            //get type of search key
+            AttributeTypeEnum type = treeNode.getSearchKeyType();
+            //write each indexEntry in searchkey, address order.
+            for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
+
+                switch (type) {
+                    case INTEGER:
+                        currentNode.writeInt((int) entry.getKey());
+                        break;
+                    case DOUBLE:
+                        currentNode.writeDouble((double) entry.getKey());
+                        break;
+                    case BOOLEAN:
+                        currentNode.write((byte) ((boolean) entry.getKey() ? 1 : 0));
+                        break;
+                    case CHAR, VARCHAR:
+                        currentNode.writeInt(((String) entry.getKey()).length());
+                        currentNode.write(((String) entry.getKey()).getBytes(StandardCharsets.UTF_8));
+                        break;
+                }
+                currentNode.writeInt(entry.getValue());
+            }
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    //DO NOT CALL buffer manager handles this
     private void writePage(Page page) throws IOException {
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "rw")){
             currentPage.seek(page.getPageAddress());
@@ -572,9 +621,10 @@ public class BufferManager {
         }
     }
 
+    //readPage is only for type Page
     private Page readPage(int pageAddress, String tableName) throws IOException{
         if (this.bufferPages.containsKey(pageAddress)) {
-            return this.bufferPages.get(pageAddress);
+            return (Page) this.bufferPages.get(pageAddress);
         }
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")){
             currentPage.seek(pageAddress);

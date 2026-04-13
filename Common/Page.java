@@ -9,7 +9,7 @@ import java.util.*;
 
 import static AttributeInfo.AttributeTypeEnum.VARCHAR;
 
-public class Page {
+public class Page implements Pages{
     private int numRows;
     private int address;
     private int nextPage;
