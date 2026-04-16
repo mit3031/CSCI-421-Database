@@ -4,6 +4,7 @@ import AttributeInfo.AttributeTypeEnum;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class BTreeNode implements Pages{
     private AttributeTypeEnum searchKeyType;
@@ -20,7 +21,7 @@ public class BTreeNode implements Pages{
         this.numEntries = numEntries;
         this.address = address;
         this.modified = modified;
-        this.IndexEntries = new HashMap<>();
+        this.IndexEntries = new TreeMap<>();
         this.lastUsed = Instant.now();
         this.internal = internal;
         this.myParent = myParent;

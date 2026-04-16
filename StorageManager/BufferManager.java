@@ -502,7 +502,6 @@ public class BufferManager {
             AttributeTypeEnum type = treeNode.getSearchKeyType();
             //write each indexEntry in searchkey, address order.
             for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
-
                 switch (type) {
                     case INTEGER:
                         currentNode.writeInt((int) entry.getKey());
