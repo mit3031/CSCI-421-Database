@@ -51,6 +51,13 @@ public class BufferManager {
         newPage.SetModified(true);
     }
 
+    public void newBTreeNode(int Address, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint) throws IOException {
+        Catalog catalog = Catalog.getInstance();
+        BTreeNode bTreeNode = new BTreeNode(0, Address, true, internal, myParent, searchKeyType, lastPoint);
+        catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
+        addPageToBuffer(bTreeNode);
+    }
+
     public void dropTable(String tableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
         int pageAddress = catalog.getAddressOfPage(tableName);
@@ -475,7 +482,7 @@ public class BufferManager {
      * from the buffer and the new page is added
      * @param page the page to add to the buffer
      */
-    private void addPageToBuffer(Page page) throws IOException {
+    private void addPageToBuffer(Pages page) throws IOException {
         //if buffer page will fit in buffer add it, otherwise remove the last used item and add this page
         if (this.bufferSize > 0 && this.bufferPages.size() >= this.bufferSize) {
             removeLRUPage();
@@ -498,8 +505,14 @@ public class BufferManager {
                 }
                 return; // Exit early after writing empty page
             }
+            //add overhead info like myParent
+            currentNode.writeInt(treeNode.getNumEntries());
+            currentNode.write((byte) (treeNode.isInternal() ? 1: 0));
+            currentNode.writeInt(treeNode.getMyParent());
             //get type of search key
             AttributeTypeEnum type = treeNode.getSearchKeyType();
+            currentNode.writeInt(getEnumCode(type));
+            currentNode.writeInt(treeNode.getLastPoint());
             //write each indexEntry in searchkey, address order.
             for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
                 switch (type) {
@@ -521,6 +534,45 @@ public class BufferManager {
             }
         } catch (RuntimeException | IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
+        if (this.bufferPages.containsKey(pageAddress)) {
+            return (BTreeNode) this.bufferPages.get(pageAddress);
+        }
+        try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")) {
+            currentPage.seek(pageAddress);
+            Integer numEntries = currentPage.readInt();
+            Boolean isInternal = currentPage.read() == 1;
+            Integer myParent = currentPage.readInt();
+            AttributeTypeEnum searchKeyType = getEnumFromCode(currentPage.readInt());
+            Integer lastPoint = currentPage.readInt();
+            BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint);
+            for(int i = 0; i < numEntries; i++) {
+                Object Key = null;
+                switch (searchKeyType) {
+                    case INTEGER:
+                        Key = currentPage.readInt();
+                        break;
+                    case DOUBLE:
+                        Key = currentPage.readDouble();
+                        break;
+                    case BOOLEAN:
+                        Key = currentPage.read() == 1;
+                        break;
+                    case CHAR, VARCHAR:
+                        Integer length = currentPage.readInt();
+                        byte[] varchar = new byte[length];
+                        currentPage.readFully(varchar);
+                        Key = new String(varchar, StandardCharsets.UTF_8);
+                        break;
+                }
+                Integer Value = currentPage.readInt();
+                bNode.insertIndex(Key, Value);
+            }
+            addPageToBuffer(bNode);
+            return bNode;
         }
     }
 
