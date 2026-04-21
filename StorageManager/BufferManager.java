@@ -51,9 +51,9 @@ public class BufferManager {
         newPage.SetModified(true);
     }
 
-    public void newBTreeNode(int Address, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint) throws IOException {
+        public void newBTreeNode(int Address,int numEntries, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        BTreeNode bTreeNode = new BTreeNode(0, Address, true, internal, myParent, searchKeyType, lastPoint);
+        BTreeNode bTreeNode = new BTreeNode(numEntries, Address, true, internal, myParent, searchKeyType, lastPoint);
         catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
         addPageToBuffer(bTreeNode);
     }
@@ -537,7 +537,7 @@ public class BufferManager {
         }
     }
 
-    private BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
+    public BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
         if (this.bufferPages.containsKey(pageAddress)) {
             return (BTreeNode) this.bufferPages.get(pageAddress);
         }
