@@ -59,6 +59,37 @@ public class BTreeNode implements Pages{
     }
 
     /**
+     * Finds the page that a given key should be inserted into, recrusivley calls itself until it returns a page address
+     * @param searchKey the key we are trying to insert
+     * @return the page to insert into
+     */
+    public int findPageToInsert(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+
+        try{
+            for(Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                if(searchKeyCompare < 0 && !this.internal){
+                    return this.IndexEntries.get(nodeSearchKey);
+                } else if (searchKeyCompare < 0){
+                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
+                }
+
+                }
+            if(!this.internal){
+                return this.lastPoint;
+            } else{
+                return bufferManager.readBTreeNode(this.lastPoint).findPageToInsert(searchKey);
+            }
+        } catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    /**
      * Attempts to update b+ tree based on status of this node.
      * @Author: Antonio Bicknell
      */
