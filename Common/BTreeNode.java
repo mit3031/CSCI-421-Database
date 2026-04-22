@@ -94,7 +94,8 @@ public class BTreeNode implements Pages{
      * This method checks if a search key is unique. Recursively calls itself to navigate the tree
      * Note: Not sure this is necessary at all, there theoretically shouldn't be a case where you just need to know if it is unique and not also insert it into the tree but maybe
      * @param searchKey the key to check if unique
-     * @return true if unique, false otherwise
+     * @return true if unique, false otherwise\
+     * @Author Logan Maleady
      */
     public boolean checkIfUnique(Object searchKey){
         BufferManager bufferManager = BufferManager.getInstance();
@@ -169,6 +170,59 @@ public class BTreeNode implements Pages{
             lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Deletes a value from the leafs a unique tree
+     * @param searchKey the key that we want to delete
+     * @return true if deleted, false if search key isn't in the tree
+     * @Author Logan Maleady
+     */
+    public boolean deleteFromUnqiueTree(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+        try{
+            // loop through every search key in this node to follow the tree down to where the search key we are trying to delete is
+            for(Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                // if the node is a leaf we can delete the search key
+                if(!this.internal){
+                    if(this.IndexEntries.containsKey(searchKey)){
+                        this.deleteIndex(searchKey);
+                        // delete successful
+                        return true;
+                    } else {
+                        return false;
+                    }
+
+                    // if the search key is less than the current search key in the node then go to the left of that node
+                } else if (searchKeyCompare < 0){
+                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).deleteFromUnqiueTree(searchKey);
+                    // if the search key is equal to the current search key in the node then it is not unique and this should return false
+                }
+                // if the search key is larger than the current search key in the node we move on to check the next
+            }
+
+            // Getting out of the loop means all search keys in the node are smaller than this search key so either
+            // go down the right of the tree or if it's a leaf delete it
+
+            if(!this.internal){
+                // todo Not sure if this is necessary it should get caught in the loop so this condition will never hit but for safety it is here
+                if(this.IndexEntries.containsKey(searchKey)){
+                    this.deleteIndex(searchKey);
+                    // delete successful
+                    return true;
+                } else {
+                    return false;
+                }
+            } else{
+                return bufferManager.readBTreeNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
+            }
+        } catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void insert(Object searchKey){
