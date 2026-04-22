@@ -59,9 +59,10 @@ public class BTreeNode implements Pages{
     }
 
     /**
-     * Finds the page that a given key should be inserted into, recrusivley calls itself until it returns a page address
+     * Finds the page that a given key should be inserted into, recursively calls itself until it returns a page address
      * @param searchKey the key we are trying to insert
      * @return the page to insert into
+     * @Author Logan Maleady lpm5781
      */
     public int findPageToInsert(Object searchKey){
         BufferManager bufferManager = BufferManager.getInstance();
@@ -86,6 +87,91 @@ public class BTreeNode implements Pages{
             lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
+
+    }
+
+    /**
+     * This method checks if a search key is unique. Recursively calls itself to navigate the tree
+     * Note: Not sure this is necessary at all, there theoretically shouldn't be a case where you just need to know if it is unique and not also insert it into the tree but maybe
+     * @param searchKey the key to check if unique
+     * @return true if unique, false otherwise
+     */
+    public boolean checkIfUnique(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+
+        try{
+            for(Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                if(searchKeyCompare < 0 && !this.internal){
+                    return true;
+                } else if (searchKeyCompare < 0){
+                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).checkIfUnique(searchKey);
+                } else if (searchKeyCompare == 0){
+                    return false;
+                }
+
+
+            }
+            if(!this.internal){
+                return true;
+            } else{
+                return bufferManager.readBTreeNode(this.lastPoint).checkIfUnique(searchKey);
+            }
+        } catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * This method is used to determine if a search key with the Unique param can be inserted. This will also add that
+     * search key to the tree for future references.
+     * @param searchKey the value that has a unique constraint and is currently trying to be inserted
+     * @return True if the search key is unique, False if it is not
+     * @Author Logan Maleady lpm5781
+     */
+    public boolean insertIntoUnqiueTree(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+        try{
+            // loop through every search key in this node to follow the tree down to where the search key we are trying to insert goes
+            for(Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                // if the node is a leaf we can add the search key to the node and call update in case the tree needs updating
+                // We return true to denote that the search key is unique
+                if(!this.internal){
+                    this.IndexEntries.put(searchKey, -1);
+                    update();
+                    return true;
+                // if the search key is less than the current search key in the node then go to the left of that node
+                } else if (searchKeyCompare < 0){
+                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
+                // if the search key is equal to the current search key in the node then it is not unique and this should return false
+                } else if (searchKeyCompare == 0){
+                    return false;
+                }
+                // if the search key is larger than the current search key in the node we move on to check the next
+            }
+
+            // Getting out of the loop means all search keys in the node are smaller than this search key so either
+            // go down the right of the tree or if it's a leaf insert it and return true
+
+            if(!this.internal){
+                // todo Not sure if this is necessary it might get caught in the loop so this condition will never hit but for safety it is here
+                this.IndexEntries.put(searchKey, -1);
+                update();
+                return true;
+            } else{
+                return bufferManager.readBTreeNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
+            }
+        } catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void insert(Object searchKey){
 
     }
 
