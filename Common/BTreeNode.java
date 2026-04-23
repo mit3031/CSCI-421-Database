@@ -91,6 +91,91 @@ public class BTreeNode implements Pages{
     }
 
     /**
+     * Inserts a primary key into the b+ tree and finds the address of the page the primary key should be inserted into
+     * @param searchKey the primary key trying to be inserted into the database and the tree
+     * @return the address of the page search key should be inserted into
+     * @Author Logan Maleady
+     */
+    public int insertIntoBTree(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+
+        try{
+            for (Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                if(searchKeyCompare < 0 && !this.internal){
+                    Integer pageAddress = this.IndexEntries.get(nodeSearchKey);
+                    this.IndexEntries.put(searchKey, pageAddress);
+                    update();
+                    return pageAddress;
+                } else if (searchKeyCompare < 0){
+                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey);
+                }
+
+            }
+            if(!this.internal){
+                this.IndexEntries.put(searchKey, this.lastPoint);
+                update();
+                return this.lastPoint;
+            } else{
+                return bufferManager.readBTreeNode(this.lastPoint).insertIntoBTree(searchKey);
+            }
+
+        }catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Replace the value of the current search key with a pointer to its new page. Should be used when a page splits.
+     * This is a basic implementation that could probably be optimized for doing multiple keys at once if it causes a big
+     * performance issue we can change it
+     * @param searchKey the key that needs to be changed
+     * @param pageAddress the address to change to
+     * @Author Logan Maleady
+     */
+    public void updateSearchKeysPage(Object searchKey, Integer pageAddress){
+        BufferManager bufferManager = BufferManager.getInstance();
+
+        try{
+            boolean replaced = false;
+            for (Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                if(!this.internal){
+                    //Variable keyExists is only used for debugging
+                    boolean keyExists = this.IndexEntries.containsKey(searchKey);
+                    //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
+                    Object successfulReplace = this.IndexEntries.replace(searchKey, pageAddress);
+                    replaced = true;
+                    if(keyExists && successfulReplace == null){
+                        Logger.log("Search key was not replaced as it does not exist");
+                    }
+                    break;
+                } else if (searchKeyCompare < 0){
+                    bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
+                }
+
+            }
+            if(!this.internal && !replaced){
+                boolean keyExists = this.IndexEntries.containsKey(searchKey);
+                //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
+                Object successfulReplace = this.IndexEntries.replace(searchKey, pageAddress);
+                if(keyExists && successfulReplace == null){
+                    Logger.log("Search key was not replaced as it does not exist");
+                }
+            } else{
+                bufferManager.readBTreeNode(this.lastPoint).updateSearchKeysPage(searchKey, pageAddress);
+            }
+
+        }catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
      * This method checks if a search key is unique. Recursively calls itself to navigate the tree
      * Note: Not sure this is necessary at all, there theoretically shouldn't be a case where you just need to know if it is unique and not also insert it into the tree but maybe
      * @param searchKey the key to check if unique
@@ -222,10 +307,6 @@ public class BTreeNode implements Pages{
             lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
-
-    }
-
-    public void insert(Object searchKey){
 
     }
 
