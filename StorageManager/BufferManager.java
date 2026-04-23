@@ -229,6 +229,10 @@ public class BufferManager {
                 
                 // Find the place where the record should go
                 do {
+                    if(comparePrimaryKey(primaryKey, currentPage.getRecord(currentPage.getNumRows()-1).get(pkIndex)) > 0 && currentPage.getNextPage() != -1){
+                        currentPage = select(currentPage.getNextPage(), tableName);
+                        continue;
+                    }
                     int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
                     if(currentPage.isEmpty())
                     {
