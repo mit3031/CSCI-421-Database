@@ -98,6 +98,8 @@ public class Insert implements Command {
 
                 // revised PK check checks this row against table and batch
                 checkPrimaryKeyViolations(tableName, attributes, row, pkValuesInBatch, i + 1);
+                
+                checkUniqueConstraints(tableName, attributes, row, i + 1);
 
                 // Insert the row
                 address = store.insertSingleRow(tableName, row, address);
@@ -404,5 +406,43 @@ public class Insert implements Command {
 
         // Add pk to batch set if inserted
         pkValuesInBatch.add(pkKey);
+    }
+    
+    /**
+     * Checks UNIQUE constraints for a row using StorageManager
+     * @param tableName name of the table
+     * @param attributes list of attributes
+     * @param row the row being inserted
+     * @param rowNum the row number (for error messages)
+     * @throws SQLSyntaxErrorException if a UNIQUE constraint is violated
+     */
+    private void checkUniqueConstraints(String tableName, List<Attribute> attributes, 
+                                       List<Object> row, int rowNum) throws SQLSyntaxErrorException {
+        StorageManager store = StorageManager.getStorageManager();
+        
+        // Check each UNIQUE attribute
+        for (int i = 0; i < attributes.size(); i++) {
+            Attribute attr = attributes.get(i);
+            if (attr.getDefinition().getIsUnique()) {
+                Object value = row.get(i);
+                
+                if (value == null) {
+                    continue;
+                }
+                
+                try {
+                    if (!store.checkUniqueConstraint(tableName, attr.getName(), value)) {
+                        throw new SQLSyntaxErrorException(
+                            "Row " + rowNum + ": UNIQUE constraint violation for attribute '" + 
+                            attr.getName() + "', value '" + value + "' already exists"
+                        );
+                    }
+                } catch (SQLSyntaxErrorException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new SQLSyntaxErrorException("Error checking UNIQUE constraint: " + e.getMessage());
+                }
+            }
+        }
     }
 }

@@ -118,17 +118,34 @@ public class BufferManager {
             throw new Exception("Table does not exist: " + tableName);
         }
 
-        Page currentPage = select(pageAddress, tableName);
-
         List<Attribute> attributes = table.getAttributes();
         List<Integer> pkIndices = new ArrayList<>();
+        Attribute pkAttribute = null;
         for (int i = 0; i < attributes.size(); i++) {
             if (attributes.get(i).getDefinition().getIsPrimary()) {
                 pkIndices.add(i);
+                pkAttribute = attributes.get(i);
             }
         }
 
         Integer pkIndex = pkIndices.get(0);
+        
+        // Phase 3: Check if indexing is enabled and we have a B+ tree for the primary key
+        boolean useIndexing = catalog.getIndexingEnabled() && pkAttribute != null;
+        BTreeSchema pkBTreeSchema = null;
+        BTreeNode rootNode = null;
+        
+        if (useIndexing) {
+            pkBTreeSchema = table.getIndex(pkAttribute.getName());
+            if (pkBTreeSchema != null && pkBTreeSchema.getRootNodeAddress() != -1) {
+                rootNode = readBTreeNode(pkBTreeSchema.getRootNodeAddress());
+            } else {
+                useIndexing = false; // Fall back to linear search if no B+ tree
+            }
+        }
+
+        // Initialize currentPage - will be overridden by B+ tree if indexing is enabled
+        Page currentPage = select(pageAddress, tableName);
 
         for (List<Object> row : rows) {
             // Convert List<Object> to ArrayList<Object>
@@ -141,117 +158,139 @@ public class BufferManager {
 
             Object primaryKey = record.get(pkIndex);
             boolean inserted = false;
-
-            // Find the place where the record should go
-            do {
+            
+            // Phase 3: Use B+ tree to find insertion point if indexing is enabled
+            if (useIndexing && rootNode != null) {
+                // Use B+ tree to find the page where this primary key should be inserted
+                // This also inserts the key into the tree
+                int targetPageAddress = rootNode.insertIntoBTree(primaryKey);
+                currentPage = select(targetPageAddress, tableName);
+                
+                // Track if page splits so we can update the B+ tree
+                int originalPageAddress = currentPage.getPageAddress();
+                
+                // Insert the record at the target page
                 int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
-                if(currentPage.isEmpty())
-                {
-                    if(availableSpace < totalRecordSize){
-                        throw new Exception("Page size too small for this entry for records of this size please create a new database with a larger page size");
+                
+                if (currentPage.isEmpty()) {
+                    if (availableSpace < totalRecordSize) {
+                        throw new Exception("Page size too small for this entry");
                     }
                     currentPage.addRecord(record);
-                    inserted = true;
                     currentPage.setNumRows(currentPage.getNumRows() + 1);
-                    break;
-                }
-                for (int pageRow = 0; pageRow < currentPage.getNumRows(); pageRow++) {
-                    int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
-                    // Both primary keys are equal should not be possible if primary keys are being enforced
-                    if (pKeyCompare == 0) {
-                        if(availableSpace < totalRecordSize){
-                            currentPage = splitPage(currentPage, record, pageRow+1, catalog);
-                        } else {
-                            currentPage.addRecord(record, pageRow+1);
-                            currentPage.setNumRows(currentPage.getNumRows() + 1);
-                        }
-                        inserted = true;
-                        break;
-                        //primaryKey of record to be inserted < primary key of current record in the page
-                    } else if (pKeyCompare < 0) {
-                        if(availableSpace < totalRecordSize){
-                            currentPage = splitPage(currentPage, record, pageRow, catalog);
-                        } else {
-                            currentPage.addRecord(record, pageRow);
-                            currentPage.setNumRows(currentPage.getNumRows() + 1);
-                        }
-                        inserted = true;
-
-                        break;
-
-                        // primaryKey or record to be inserted > primary key of current record in the page
-                    } else if (pageRow == currentPage.getNumRows() - 1) {
-                        // if the page has already split, and this is the last element in the page the record belongs in the next page
-                        if (currentPage.getNextPage() != -1) {
-                            currentPage = select(currentPage.getNextPage(), tableName);
-                            break;
-                        } else {
-                            //Split the page and insert or just insert directly if no split is necessary
-                            if(availableSpace < totalRecordSize){
-                                currentPage = splitPage(currentPage, record, -1, catalog);
+                    inserted = true;
+                } else {
+                    // Find correct position in page based on primary key order
+                    boolean recordInserted = false;
+                    for (int pageRow = 0; pageRow < currentPage.getNumRows(); pageRow++) {
+                        int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
+                        
+                        if (pKeyCompare <= 0) {
+                            // Insert at this position
+                            if (availableSpace < totalRecordSize) {
+                                currentPage = splitPage(currentPage, record, pageRow, catalog);
                             } else {
-                                currentPage.addRecord(record, -1);
+                                currentPage.addRecord(record, pageRow);
+                                currentPage.setNumRows(currentPage.getNumRows() + 1);
+                            }
+                            recordInserted = true;
+                            inserted = true;
+                            break;
+                        }
+                    }
+                    
+                    // If not inserted yet, append to end
+                    if (!recordInserted) {
+                        if (availableSpace < totalRecordSize) {
+                            currentPage = splitPage(currentPage, record, -1, catalog);
+                        } else {
+                            currentPage.addRecord(record, -1);
+                            currentPage.setNumRows(currentPage.getNumRows() + 1);
+                        }
+                        inserted = true;
+                    }
+                }
+                
+                // If page address changed due to split, update the B+ tree
+                if (currentPage.getPageAddress() != originalPageAddress) {
+                    rootNode.updateSearchKeysPage(primaryKey, currentPage.getPageAddress());
+                }
+                
+                currentPage.SetModified(true);
+                currentPage.updateLastUsed();
+            } else {
+                // Fall back to linear search (original approach)
+                currentPage = select(pageAddress, tableName);
+                
+                // Find the place where the record should go
+                do {
+                    int availableSpace = currentPage.getFreeSpaceEnd() - currentPage.getFreeSpaceStart();
+                    if(currentPage.isEmpty())
+                    {
+                        if(availableSpace < totalRecordSize){
+                            throw new Exception("Page size too small for this entry for records of this size please create a new database with a larger page size");
+                        }
+                        currentPage.addRecord(record);
+                        inserted = true;
+                        currentPage.setNumRows(currentPage.getNumRows() + 1);
+                        break;
+                    }
+                    for (int pageRow = 0; pageRow < currentPage.getNumRows(); pageRow++) {
+                        int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
+                        // Both primary keys are equal should not be possible if primary keys are being enforced
+                        if (pKeyCompare == 0) {
+                            if(availableSpace < totalRecordSize){
+                                currentPage = splitPage(currentPage, record, pageRow+1, catalog);
+                            } else {
+                                currentPage.addRecord(record, pageRow+1);
+                                currentPage.setNumRows(currentPage.getNumRows() + 1);
+                            }
+                            inserted = true;
+                            break;
+                            //primaryKey of record to be inserted < primary key of current record in the page
+                        } else if (pKeyCompare < 0) {
+                            if(availableSpace < totalRecordSize){
+                                currentPage = splitPage(currentPage, record, pageRow, catalog);
+                            } else {
+                                currentPage.addRecord(record, pageRow);
                                 currentPage.setNumRows(currentPage.getNumRows() + 1);
                             }
                             inserted = true;
 
                             break;
+
+                            // primaryKey or record to be inserted > primary key of current record in the page
+                        } else if (pageRow == currentPage.getNumRows() - 1) {
+                            // if the page has already split, and this is the last element in the page the record belongs in the next page
+                            if (currentPage.getNextPage() != -1) {
+                                currentPage = select(currentPage.getNextPage(), tableName);
+                                break;
+                            } else {
+                                //Split the page and insert or just insert directly if no split is necessary
+                                if(availableSpace < totalRecordSize){
+                                    currentPage = splitPage(currentPage, record, -1, catalog);
+                                } else {
+                                    currentPage.addRecord(record, -1);
+                                    currentPage.setNumRows(currentPage.getNumRows() + 1);
+                                }
+                                inserted = true;
+
+                                break;
+                            }
+                        } else if (pageRow != currentPage.getNumRows() - 1) {
+
+
+
                         }
-                    } else if (pageRow != currentPage.getNumRows() - 1) {
-
-
-
-                    }
                 }
 
-            } while (!inserted);
-
-//            // If not enough space, we need a new page
-//            if (availableSpace < totalRecordSize) {
-//                // Write current page before moving to a new one
-//                //if (currentPage.getModified()) {
-//                    //writePage(currentPage);
-//                    //currentPage.SetModified(false);
-//                //}
-//
-//                // Get a new page
-//                int newPageAddress;
-//                if (catalog.hasFreePages()) {
-//                    newPageAddress = catalog.getFirstFreePage();
-//                    catalog.removeFirstFreePage();
-//                } else {
-//                    // Allocate a new page at the end
-//                    newPageAddress = catalog.getFirstFreeAddress();
-//                }
-//
-//                // Mark current page as having a next page
-//                currentPage.setNextPage(newPageAddress);
-//                currentPage.SetModified(true);
-//                //let buffer handle this
-//                //writePage(currentPage);
-//                //currentPage.SetModified(false);
-//
-//                // Create the new page
-//                newPage(newPageAddress, tableName);
-//                currentPage = select(newPageAddress, tableName);
-//            }
-
-            // Add record to current page
-//            currentPage.addRecord(record);
-//            currentPage.setNumRows(currentPage.getNumRows() + 1);
-
-            // Update free space pointers
-            //currentPage.setFreeSpaceStart(currentPage.getFreeSpaceStart() + (Integer.BYTES * 2)); // for offset and length
-            //currentPage.setFreeSpaceEnd(currentPage.getFreeSpaceEnd() - recordSize);
-            currentPage.SetModified(true);
-            currentPage.updateLastUsed();
+                } while (!inserted);
+                
+                currentPage.SetModified(true);
+                currentPage.updateLastUsed();
+            }
         }
-
-        // Write the final page
-        //if (currentPage.getModified()) {
-            //writePage(currentPage);
-            //currentPage.SetModified(false);
-        //}
+        
         return currentPage.getPageAddress();
     }
 

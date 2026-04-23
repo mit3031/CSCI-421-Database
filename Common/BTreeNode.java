@@ -252,24 +252,23 @@ public class BTreeNode implements Pages{
             // loop through every search key in this node to follow the tree down to where the search key we are trying to insert goes
             for(Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
-                // if the node is a leaf we can add the search key to the node and call update in case the tree needs updating
-                // We return true to denote that the search key is unique
-                if(!this.internal){
-                    this.IndexEntries.put(searchKey, -1);
-                    update();
-                    return true;
-                // if the search key is less than the current search key in the node then go to the left of that node
-                } else if (searchKeyCompare < 0){
-                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
-                // if the search key is equal to the current search key in the node then it is not unique and this should return false
-                } else if (searchKeyCompare == 0){
+                
+                // FIRST check if the search key is equal to the current search key - if so, it's not unique
+                if (searchKeyCompare == 0){
                     return false;
                 }
-                // if the search key is larger than the current search key in the node we move on to check the next
+                // if the search key is less than the current search key in the node
+                else if (searchKeyCompare < 0){
+                    if(!this.internal){
+                        this.IndexEntries.put(searchKey, -1);
+                        update();
+                        return true;
+                    } else {
+                        // if the node is internal, go to the left of that node
+                        return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
+                    }
+                }
             }
-
-            // Getting out of the loop means all search keys in the node are smaller than this search key so either
-            // go down the right of the tree or if it's a leaf insert it and return true
 
             if(!this.internal){
                 // todo Not sure if this is necessary it might get caught in the loop so this condition will never hit but for safety it is here

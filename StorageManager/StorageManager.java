@@ -1,7 +1,10 @@
 package StorageManager;
 
 import AttributeInfo.Attribute;
+import AttributeInfo.AttributeTypeEnum;
 import AttributeInfo.IntegerDefinition;
+import Catalog.BTreeSchema;
+import Common.BTreeNode;
 import Common.Command;
 import Common.Page;
 import Catalog.Catalog;
@@ -46,6 +49,66 @@ public class StorageManager {
         BufferManager bufferManager = BufferManager.getInstance();
         //buffer manager creates the new page
         bufferManager.newPage(firstFreePage, table.getTableName());
+        
+        // Phase 3: Initialize B+ tree for primary key if indexing is enabled
+        if (catalog.getIndexingEnabled()) {
+            List<Attribute> attributes = table.getAttributes();
+            
+            // Find primary key attribute and UNIQUE attributes
+            for (Attribute attr : attributes) {
+                if (attr.getDefinition().getIsPrimary()) {
+                    // Create B+ tree for primary key
+                    AttributeTypeEnum pkType = attr.getDefinition().getType();
+                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition());
+                    
+                    // Get a free page for the B+ tree root node
+                    int bTreeRootAddress;
+                    if (catalog.hasFreePages()) {
+                        bTreeRootAddress = catalog.getFirstFreePage();
+                        catalog.removeFirstFreePage();
+                    } else {
+                        bTreeRootAddress = catalog.getFirstFreeAddress();
+                    }
+                    
+                    // Create the root B+ tree node (leaf node initially, no parent)
+                    // lastPoint should point to the first data page of the table
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, pkType, firstFreePage);
+                    
+                    // Create BTreeSchema and add to table
+                    BTreeSchema pkIndex = new BTreeSchema(treeOrder, true, false, pkType);
+                    pkIndex.setRootNodeAddress(bTreeRootAddress);
+                    table.addIndex(attr.getName(), pkIndex);
+                    
+                    Logger.log("Created B+ tree index for primary key '" + attr.getName() + 
+                              "' at address " + bTreeRootAddress);
+                } else if (attr.getDefinition().getIsUnique()) {
+                    // Create B+ tree for UNIQUE constraint
+                    AttributeTypeEnum uniqueType = attr.getDefinition().getType();
+                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition());
+                    
+                    // Get a free page for the B+ tree root node
+                    int bTreeRootAddress;
+                    if (catalog.hasFreePages()) {
+                        bTreeRootAddress = catalog.getFirstFreePage();
+                        catalog.removeFirstFreePage();
+                    } else {
+                        bTreeRootAddress = catalog.getFirstFreeAddress();
+                    }
+                    
+                    // Create the root B+ tree node (leaf node initially, no parent)
+                    // lastPoint should point to the first data page of the table
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, uniqueType, firstFreePage);
+                    
+                    // Create BTreeSchema and add to table
+                    BTreeSchema uniqueIndex = new BTreeSchema(treeOrder, false, false, uniqueType);
+                    uniqueIndex.setRootNodeAddress(bTreeRootAddress);
+                    table.addIndex(attr.getName(), uniqueIndex);
+                    
+                    Logger.log("Created B+ tree index for UNIQUE attribute '" + attr.getName() + 
+                              "' at address " + bTreeRootAddress);
+                }
+            }
+        }
     }
 
     public void DropTable(TableSchema table) throws Exception {
@@ -178,6 +241,64 @@ public class StorageManager {
         BufferManager bufferManager = BufferManager.getInstance();
         int nextAddress = bufferManager.heapInsert(tableName, rows, pageAddress);
         return nextAddress;
+    }
+
+    /**
+     * Checks if a value violates a UNIQUE constraint on a specific attribute
+     * Uses B+ tree indexing if enabled, otherwise falls back to linear search
+     * @param tableName name of the table
+     * @param attributeName name of the attribute with UNIQUE constraint
+     * @param value the value to check for uniqueness
+     * @return true if value is unique (does not exist), false if it already exists
+     * @throws Exception if there's an error accessing the table or index
+     */
+    public boolean checkUniqueConstraint(String tableName, String attributeName, Object value) throws Exception {
+        Catalog catalog = Catalog.getInstance();
+        TableSchema table = catalog.getTable(tableName);
+        
+        if (table == null) {
+            throw new Exception("Table does not exist: " + tableName);
+        }
+        
+        // NULL values are always allowed for UNIQUE constraints
+        if (value == null) {
+            return true;
+        }
+        
+        // Phase 3: Use B+ tree if indexing is enabled
+        if (catalog.getIndexingEnabled()) {
+            BTreeSchema uniqueIndex = table.getIndex(attributeName);
+            if (uniqueIndex != null && uniqueIndex.getRootNodeAddress() != -1) {
+                BufferManager bufferManager = BufferManager.getInstance();
+                BTreeNode rootNode = bufferManager.readBTreeNode(uniqueIndex.getRootNodeAddress());
+                
+                // insertIntoUniqueTree returns false if value already exists
+                return rootNode.insertIntoUnqiueTree(value);
+            }
+        }
+        
+        // Fall back to linear search if no B+ tree available
+        Integer attributeIndex = table.getAttributeIndex(attributeName);
+        if (attributeIndex == null) {
+            throw new Exception("Attribute '" + attributeName + "' not found in table");
+        }
+        
+        Page currentPage = selectFirstPage(tableName);
+        while (currentPage != null) {
+            for (int i = 0; i < currentPage.getNumRows(); i++) {
+                List<Object> existingRow = currentPage.getRecord(i);
+                Object existingValue = existingRow.get(attributeIndex);
+                
+                if (existingValue != null && existingValue.equals(value)) {
+                    return false; // Value already exists, not unique
+                }
+            }
+            
+            if (currentPage.getNextPage() == -1) break;
+            currentPage = select(currentPage.getNextPage(), tableName);
+        }
+        
+        return true; // Value is unique
     }
 
     public static void main(String[] args){

@@ -86,7 +86,10 @@ public class ParserDML {
             // Handle INSERT specially to preserve quoted strings with their quotes
             String[] insertTokens = parseInsertCommand(command);
             Command insert = new Insert();
-            insert.run(insertTokens);
+            boolean success = insert.run(insertTokens);
+            if (!success) {
+                throw new Exception("INSERT command failed");
+            }
             return true;
         } else if (commandLower.startsWith("update")) {
             // Handle update specially to preserve quotes for the SET clause
