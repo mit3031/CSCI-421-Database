@@ -92,7 +92,12 @@ public class Phase3IndexingTest {
                 }
                 long endTime = System.currentTimeMillis();
                 
-                // Verify data
+                // Display table contents via SELECT
+                System.out.println("\n  Retrieving data with SELECT * FROM indexed_table:");
+                ParserDML.runCommand("SELECT * FROM indexed_table;");
+                
+                // Verify data is in sorted order
+                System.out.println("\n  Verifying insertion order...");
                 Page page = store.selectFirstPage("indexed_table");
                 int count = 0;
                 boolean sorted = true;
@@ -159,11 +164,42 @@ public class Phase3IndexingTest {
                     System.out.println("  ✓ Duplicate rejected");
                 }
                 
-                if (duplicateFailed) {
+                // Display table contents via SELECT
+                System.out.println("\n  Retrieving data with SELECT * FROM unique_table:");
+                ParserDML.runCommand("SELECT * FROM unique_table;");
+                
+                // Verify insertion order (records should be sorted by primary key)
+                System.out.println("\n  Verifying insertion order...");
+                Page page = store.selectFirstPage("unique_table");
+                int count = 0;
+                boolean sorted = true;
+                int lastId = -1;
+                
+                while (page != null) {
+                    for (int i = 0; i < page.getNumRows(); i++) {
+                        count++;
+                        List<Object> row = page.getRecord(i);
+                        int id = (int) row.get(0);
+                        if (id <= lastId) {
+                            sorted = false;
+                        }
+                        lastId = id;
+                    }
+                    if (page.getNextPage() == -1) break;
+                    page = store.select(page.getNextPage(), "unique_table");
+                }
+                
+                if (duplicateFailed && sorted) {
                     System.out.println("  ✓ PASSED: UNIQUE constraint enforced via B+ tree");
+                    System.out.println("  ✓ Data is sorted by primary key");
                     passedTests++;
                 } else {
-                    System.out.println("  ✗ FAILED: UNIQUE constraint not enforced");
+                    if (!duplicateFailed) {
+                        System.out.println("  ✗ FAILED: UNIQUE constraint not enforced");
+                    }
+                    if (!sorted) {
+                        System.out.println("  ✗ FAILED: Data not in sorted order");
+                    }
                 }
             } catch (Exception e) {
                 System.out.println("  ✗ FAILED: " + e.getMessage());
@@ -191,7 +227,12 @@ public class Phase3IndexingTest {
                     ParserDML.runCommand("INSERT ordered_table VALUES (" + pk + " \"data" + pk + "\");");
                 }
                 
+                // Display table contents via SELECT
+                System.out.println("\n  Retrieving data with SELECT * FROM ordered_table:");
+                ParserDML.runCommand("SELECT * FROM ordered_table;");
+                
                 // Verify they're stored in sorted order
+                System.out.println("\n  Verifying insertion order...");
                 Page page = store.selectFirstPage("ordered_table");
                 List<Integer> retrievedOrder = new ArrayList<>();
                 

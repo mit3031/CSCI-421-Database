@@ -110,7 +110,7 @@ public class BufferManager {
      * @return Address of the page the last row was inserted into
      * @throws Exception
      */
-    public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
+    public Integer insert(String tableName, List<List<Object>> rows, int pageAddress, boolean enforcePrimaryKey) throws Exception {
         Catalog catalog = Catalog.getInstance();
         TableSchema table = catalog.getTable(tableName);
 
@@ -184,8 +184,13 @@ public class BufferManager {
                     boolean recordInserted = false;
                     for (int pageRow = 0; pageRow < currentPage.getNumRows(); pageRow++) {
                         int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
-                        
-                        if (pKeyCompare <= 0) {
+
+                        if(pKeyCompare == 0){
+                            if(enforcePrimaryKey){
+                                throw new Exception("Primary key error: Primary key " + primaryKey + " already exists");
+                            }
+                        }
+                        else if (pKeyCompare <= 0) {
                             // Insert at this position
                             if (availableSpace < totalRecordSize) {
                                 currentPage = splitPage(currentPage, record, pageRow, catalog);
@@ -239,6 +244,9 @@ public class BufferManager {
                         int pKeyCompare = comparePrimaryKey(primaryKey, currentPage.getRecord(pageRow).get(pkIndex));
                         // Both primary keys are equal should not be possible if primary keys are being enforced
                         if (pKeyCompare == 0) {
+                            if(enforcePrimaryKey){
+                                throw new Exception("Primary key error: Primary key " + primaryKey + " already exists");
+                            }
                             if(availableSpace < totalRecordSize){
                                 currentPage = splitPage(currentPage, record, pageRow+1, catalog);
                             } else {
@@ -292,6 +300,18 @@ public class BufferManager {
         }
         
         return currentPage.getPageAddress();
+    }
+
+    /**
+     * Wrapper for the insert function, calls insert with primary key enforcement marked as true as this is the common use case
+     * @param tableName the name of the table to insert the row(s) into
+     * @param rows the row(s) to be inserted
+     * @param pageAddress the address of the first page in the table
+     * @return Address of the page the last row was inserted into
+     * @throws Exception
+     */
+    public Integer insert(String tableName, List<List<Object>> rows, int pageAddress) throws Exception {
+        return insert(tableName, rows, pageAddress, true);
     }
 
     /**
