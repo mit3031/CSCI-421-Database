@@ -4,6 +4,8 @@ import DMLParser.ParserDML;
 import StorageManager.StorageManager;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Scanner;
 
 /**
@@ -80,59 +82,62 @@ public class JottQL {
             Scanner input = new Scanner(System.in);
 
             while (true) {
+                Instant commandStart = null;
                 try {
-                System.out.print("JottQL> ");
-                boolean commandReady = false;
-                String message = "";
-                while(!commandReady) {
+                    System.out.print("JottQL> ");
+                    boolean commandReady = false;
+                    String message = "";
+                    while (!commandReady) {
 
 
-                    message += input.nextLine() ;
-                    if(message.equals(QUIT_MESSAGE)) {
+                        message += input.nextLine();
+                        if (message.equals(QUIT_MESSAGE)) {
+                            shutdown();
+                            return;
+                        }
+                        message += " ";
+                        if (message.contains(";")) {
+                            commandReady = true;
+                            //trim message to end in semicolon
+                            message = message.substring(0, message.indexOf(";") + 1);
+                        }
+                    }
+
+                    String[] keywords = message.split("\\s+");
+                    commandStart = Instant.now();
+                    if (message.equals(QUIT_MESSAGE)) {
                         shutdown();
                         return;
+
+                    } else if (keywords[0].equals("CREATE") ||
+                            keywords[0].equals("ALTER") ||
+                            keywords[0].equals("DROP")) {
+                        //DDL parser handles
+                        Logger.log("Command Sent to DDL Parser");
+                        ParserDDL.parseCommand(message);
+
+                    } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT") || keywords[0].equals("DELETE") || keywords[0].equals("UPDATE")) {
+                        //DML parser handles
+                        Logger.log(("Command Sent to DML Parser"));
+                        try {
+                            ParserDML.runCommand(message);
+                        } catch (java.sql.SQLSyntaxErrorException e) {
+                            System.out.println("Syntax Error: " + e.getMessage());
+                        } catch (Exception e) {
+                            System.out.println("Error executing DML command: " + e.getMessage());
+                            if (debug) e.printStackTrace();
+                        }
+                    } else { //does not match any of our cases
+                        System.out.println("Unrecognized command in following input:\n" + message);
                     }
-                    message += " ";
-                    if(message.contains(";")){
-                        commandReady = true;
-                        //trim message to end in semicolon
-                        message = message.substring(0, message.indexOf(";") + 1);
-                    }
-                }
 
-                String[] keywords = message.split("\\s+");
-
-                if (message.equals(QUIT_MESSAGE)) {
-                    shutdown();
-                    return;
-
-                } else if (keywords[0].equals("CREATE") ||
-                        keywords[0].equals("ALTER") ||
-                        keywords[0].equals("DROP")){
-                    //DDL parser handles
-                    Logger.log("Command Sent to DDL Parser");
-                    ParserDDL.parseCommand(message);
-
-                } else if (keywords[0].equals("SELECT") || keywords[0].equals("INSERT") || keywords[0].equals("DELETE") || keywords[0].equals("UPDATE")) {
-                    //DML parser handles
-                    Logger.log(("Command Sent to DML Parser"));
-                    try {
-                        ParserDML.runCommand(message);
-                    } catch (java.sql.SQLSyntaxErrorException e) {
-                        System.out.println("Syntax Error: " + e.getMessage());
-                    } catch (Exception e) {
-                        System.out.println("Error executing DML command: " + e.getMessage());
-                        if(debug) e.printStackTrace();
-                    }
-                }
-                else{ //does not match any of our cases
-                    System.out.println("Unrecognized command in following input:\n" + message);
-                }
-
-                }
-                catch(Exception e){
+                } catch (Exception e) {
                     //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
                 }
+                Instant commandEnd = Instant.now();
+                Duration timeTaken = Duration.between(commandStart, commandEnd);
+                Logger.log("Command Time elapsed: " + timeTaken.getSeconds());
+
 
             }
     }

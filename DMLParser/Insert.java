@@ -3,6 +3,7 @@ package DMLParser;
 import Catalog.Catalog;
 import Catalog.TableSchema;
 import Common.Command;
+import Common.Logger;
 import Common.Page;
 import StorageManager.StorageManager;
 import AttributeInfo.Attribute;
@@ -94,6 +95,7 @@ public class Insert implements Command {
 
             int address = catalog.getAddressOfPage(tableName);
             for (int i = 0; i < typedRows.size(); i++) {
+                Logger.log("Inserting row " + i);
                 List<Object> row = typedRows.get(i);
 
                 // revised PK check checks this row against table and batch
