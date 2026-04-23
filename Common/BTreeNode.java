@@ -114,6 +114,7 @@ public class BTreeNode implements Pages{
             }
             if(!this.internal){
                 this.IndexEntries.put(searchKey, this.lastPoint);
+                this.modified = true;
                 update();
                 return this.lastPoint;
             } else{
@@ -316,7 +317,7 @@ public class BTreeNode implements Pages{
             }
 
             // Getting out of the loop means all search keys in the node are smaller than this search key so either
-            // go down the right of the tree or if it's a leaf delete it
+            // go down the right of the tree For if it's a leaf delete it
 
             if(!this.internal){
                 // todo Not sure if this is necessary it should get caught in the loop so this condition will never hit but for safety it is here
@@ -349,6 +350,7 @@ public class BTreeNode implements Pages{
             //put time as latest possible so that it's not gonna leave memory
             try {
                 lastUsed = Instant.MAX;
+                this.modified = true;
                 //need new page slot, get from catalog
                 Catalog cat = Catalog.getInstance();
                 int newPage = cat.getFirstFreePage();
@@ -367,6 +369,7 @@ public class BTreeNode implements Pages{
                 );
                 this.lastPoint = newPage;
                 BTreeNode newNode = bm.readBTreeNode(newPage);
+                newNode.modified = true;
                 //split records, right half into new node, and remove
                 ArrayList keys = new ArrayList<>(IndexEntries.keySet());
                 Object newNodeMin = keys.get( (int)Math.ceil(keys.size()/2.0));
@@ -430,6 +433,7 @@ public class BTreeNode implements Pages{
                             newNode.address
                     );
                     BTreeNode newRoot = bm.readBTreeNode(newHeadPage);
+                    newRoot.modified = true;
                     //based on my observations, key should be last (max) value of this page
                     Object maxKey = keys.get((int)Math.ceil(keys.size()/2.0 -1));
                     this.lastPoint = IndexEntries.get(maxKey);

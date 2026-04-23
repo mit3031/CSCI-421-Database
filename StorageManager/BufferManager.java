@@ -631,6 +631,7 @@ public class BufferManager {
                 bNode.insertIndex(Key, Value);
             }
             addPageToBuffer(bNode);
+            bNode.updateLastUsed();
             return bNode;
         }
     }
