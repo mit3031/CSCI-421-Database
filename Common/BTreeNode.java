@@ -128,6 +128,35 @@ public class BTreeNode implements Pages{
     }
 
     /**
+     * Used to insert a search key with a specific page address into the b+ tree
+     * @param searchKey the search key to insert into the tree
+     * @param pageAddress the address to insert with the key
+     */
+    public void insertIntoBTree(Object searchKey, Integer pageAddress){
+        BufferManager bufferManager = BufferManager.getInstance();
+
+        try{
+            for (Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                if(searchKeyCompare < 0 && !this.internal){
+                    this.IndexEntries.put(searchKey, pageAddress);
+                    update();
+                } else if (searchKeyCompare < 0){
+                    bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, pageAddress);
+                }
+
+            }
+            if(this.internal){
+                bufferManager.readBTreeNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
+            }
+        }catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode");
+            lastUsed = Instant.now();
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
      * Replace the value of the current search key with a pointer to its new page. Should be used when a page splits.
      * This is a basic implementation that could probably be optimized for doing multiple keys at once if it causes a big
      * performance issue we can change it
