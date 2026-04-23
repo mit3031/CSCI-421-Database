@@ -99,7 +99,7 @@ public class Insert implements Command {
                 List<Object> row = typedRows.get(i);
 
                 // revised PK check checks this row against table and batch
-                checkPrimaryKeyViolations(tableName, attributes, row, pkValuesInBatch, i + 1);
+                //checkPrimaryKeyViolations(tableName, attributes, row, pkValuesInBatch, i + 1);
 
                 // Insert the row
                 address = store.insertSingleRow(tableName, row, address);
@@ -337,6 +337,7 @@ public class Insert implements Command {
     private void checkPrimaryKeyViolations(String tableName, List<Attribute> attributes,
                                            List<Object> row, Set<String> pkValuesInBatch,
                                            int rowNum) throws SQLSyntaxErrorException {
+        Logger.log("Program somehow made it into checkPrimaryKeyViolations even though it isn't supposed to be possible");
 
         if (tableName.startsWith("$temp_order_")) {
             return; // skip PK validation for temporary sorting tables
