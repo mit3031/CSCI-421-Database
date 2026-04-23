@@ -4,6 +4,8 @@ import DMLParser.ParserDML;
 import StorageManager.StorageManager;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Scanner;
 
 /**
@@ -78,7 +80,7 @@ public class JottQL {
 
             startUp(dbLocation, pageSize, bufferSize, indexing, debug);
             Scanner input = new Scanner(System.in);
-
+            Instant cmdStart = Instant.now();
             while (true) {
                 try {
                 System.out.print("JottQL> ");
@@ -101,7 +103,7 @@ public class JottQL {
                 }
 
                 String[] keywords = message.split("\\s+");
-
+                cmdStart = Instant.now();
                 if (message.equals(QUIT_MESSAGE)) {
                     shutdown();
                     return;
@@ -133,6 +135,8 @@ public class JottQL {
                 catch(Exception e){
                     //TODO do something here or move inside while true loop so we can loop gracefully when encounter error
                 }
+                Instant cmdEnd = Instant.now();
+                Duration elapsed = Duration.between(cmdStart,cmdEnd);
 
             }
     }
