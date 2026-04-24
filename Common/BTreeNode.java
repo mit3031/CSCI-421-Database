@@ -1,6 +1,7 @@
 package Common;
 import AttributeInfo.AttributeTypeEnum;
 import Catalog.Catalog;
+import Catalog.BTreeSchema;
 import StorageManager.StorageManager;
 import StorageManager.BufferManager;
 
@@ -21,7 +22,10 @@ public class BTreeNode implements Pages{
     private Map<Object, Integer> IndexEntries;
     private Instant lastUsed;
     private boolean modified;
-    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint){
+    private String attributeName;
+    private String tableName;
+
+    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName){
         this.numEntries = numEntries;
         this.address = address;
         this.modified = modified;
@@ -31,6 +35,8 @@ public class BTreeNode implements Pages{
         this.myParent = myParent;
         this.searchKeyType = searchKeyType;
         this.lastPoint = lastPoint;
+        this.attributeName = attributeName;
+        this.tableName = tableName;
     }
 
     public int getPageAddress(){ updateLastUsed();return this.address;}
@@ -43,6 +49,8 @@ public class BTreeNode implements Pages{
     public int getNumEntries(){ updateLastUsed();return this.numEntries;}
     public Integer getMyParent(){ updateLastUsed();return this.myParent;}
     public Integer getLastPoint(){ updateLastUsed();return this.lastPoint;}
+    public String getAttributeName(){return this.tableName;}
+    public String returnTableName(){return this.attributeName;}
     public void setLastPoint(Integer lastPoint){this.lastPoint = lastPoint; modified = true;}
     //the delete a node entirely set myparent to null
     public void setMyParent(int myParent){ updateLastUsed();this.myParent = myParent; modified = true; updateLastUsed();}
@@ -384,7 +392,9 @@ public class BTreeNode implements Pages{
                         this.internal,
                         this.myParent,
                         this.searchKeyType,
-                        this.lastPoint
+                        this.lastPoint,
+                        this.attributeName,
+                        this.tableName
                 );
                 this.lastPoint = newPage;
                 BTreeNode newNode = bm.selectBNode(newPage);
@@ -465,7 +475,9 @@ public class BTreeNode implements Pages{
                             true,
                             -1,
                             this.searchKeyType,
-                            newNode.address
+                            newNode.address,
+                            this.attributeName,
+                            this.tableName
                     );
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
                     newRoot.modified = true;

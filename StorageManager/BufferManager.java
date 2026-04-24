@@ -51,9 +51,9 @@ public class BufferManager {
         newPage.SetModified(true);
     }
 
-        public void newBTreeNode(int Address,int numEntries, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint) throws IOException {
+        public void newBTreeNode(int Address,int numEntries, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        BTreeNode bTreeNode = new BTreeNode(numEntries, Address, true, internal, myParent, searchKeyType, lastPoint);
+        BTreeNode bTreeNode = new BTreeNode(numEntries, Address, true, internal, myParent, searchKeyType, lastPoint, attributeName, tableName);
         catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
         addPageToBuffer(bTreeNode);
     }
@@ -583,6 +583,12 @@ public class BufferManager {
             AttributeTypeEnum type = treeNode.getSearchKeyType();
             currentNode.writeInt(getEnumCode(type));
             currentNode.writeInt(treeNode.getLastPoint());
+            //write first length of attributeName then actual string
+            currentNode.writeInt((treeNode.getAttributeName()).length());
+            currentNode.write((treeNode.getAttributeName()).getBytes(StandardCharsets.UTF_8));
+            //write first length of tableName then actual string
+            currentNode.writeInt(treeNode.returnTableName().length());
+            currentNode.write(treeNode.returnTableName().getBytes(StandardCharsets.UTF_8));
             //write each indexEntry in searchkey, address order.
             for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
                 switch (type) {
@@ -618,7 +624,17 @@ public class BufferManager {
             Integer myParent = currentPage.readInt();
             AttributeTypeEnum searchKeyType = getEnumFromCode(currentPage.readInt());
             Integer lastPoint = currentPage.readInt();
-            BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint);
+            //read length of attributeName then read that many bits
+            Integer length = currentPage.readInt();
+            byte[] varchar = new byte[length];
+            currentPage.readFully(varchar);
+            String attributeName = new String(varchar, StandardCharsets.UTF_8);
+            //read length of tableName then read that many bits
+            Integer tableLen = currentPage.readInt();
+            byte[] varchars = new byte[tableLen];
+            currentPage.readFully(varchars);
+            String tableName = new String(varchars, StandardCharsets.UTF_8);
+            BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint, attributeName, tableName);
             for(int i = 0; i < numEntries; i++) {
                 Object Key = null;
                 switch (searchKeyType) {
@@ -632,10 +648,10 @@ public class BufferManager {
                         Key = currentPage.read() == 1;
                         break;
                     case CHAR, VARCHAR:
-                        Integer length = currentPage.readInt();
-                        byte[] varchar = new byte[length];
-                        currentPage.readFully(varchar);
-                        Key = new String(varchar, StandardCharsets.UTF_8);
+                        Integer indexLength = currentPage.readInt();
+                        byte[] chars = new byte[indexLength];
+                        currentPage.readFully(chars);
+                        Key = new String(chars, StandardCharsets.UTF_8);
                         break;
                 }
                 Integer Value = currentPage.readInt();
