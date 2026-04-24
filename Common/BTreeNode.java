@@ -396,11 +396,13 @@ public class BTreeNode implements Pages{
                     this.IndexEntries.remove(keys.get(i));
                 }
                 Logger.log("Added values to new node!");
-                //update parents of new children nodes of new node
-                for (int childIndex : newNode.IndexEntries.values()){
-                    Logger.log("Getting B+Tree Node " + childIndex);
-                    BTreeNode child = bm.selectBNode(childIndex);
-                    child.setMyParent(newPage);
+                //update parents of new children nodes of new node GIVEN INTERNAL
+                if(internal) {
+                    for (int childIndex : newNode.IndexEntries.values()) {
+                        Logger.log("Getting B+Tree Node " + childIndex);
+                        BTreeNode child = bm.selectBNode(childIndex);
+                        child.setMyParent(newPage);
+                    }
                 }
                 Logger.log("Children of new node updated parent!");
                 newNode.updateLastUsed();
