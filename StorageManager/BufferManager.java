@@ -235,7 +235,8 @@ public class BufferManager {
                 
                 // Find the place where the record should go
                 do {
-                    if(comparePrimaryKey(primaryKey, currentPage.getRecord(currentPage.getNumRows()-1).get(pkIndex)) > 0 && currentPage.getNextPage() != -1){
+                    Object largestRecord = currentPage.getNumRows() > 0 ? currentPage.getRecord(currentPage.getNumRows()-1).get(pkIndex) : null;
+                    if(largestRecord != null && comparePrimaryKey(primaryKey, largestRecord) > 0 && currentPage.getNextPage() != -1){
                         currentPage = select(currentPage.getNextPage(), tableName);
                         continue;
                     }
