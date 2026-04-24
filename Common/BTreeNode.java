@@ -95,7 +95,7 @@ public class BTreeNode implements Pages{
      * @return the address of the page search key should be inserted into
      * @Author Logan Maleady
      */
-    public int insertIntoBTree(Object searchKey){
+    public int insertIntoBTree(Object searchKey, String tableName){
         BufferManager bufferManager = BufferManager.getInstance();
 
         try{
@@ -107,21 +107,31 @@ public class BTreeNode implements Pages{
                     update();
                     return pageAddress;
                 } else if (searchKeyCompare < 0){
-                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey);
+                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, tableName);
                 }
 
             }
             if(!this.internal){
+                if(IndexEntries.isEmpty()){
+                    Catalog catalog = Catalog.getInstance();
+                    int firstPageofTable = catalog.getAddressOfPage(tableName);
+                    this.IndexEntries.put(searchKey, firstPageofTable);
+                    this.lastPoint = firstPageofTable;
+                    update();
+                }
                 this.IndexEntries.put(searchKey, this.lastPoint);
                 this.modified = true;
                 update();
                 return this.lastPoint;
             } else{
-                return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
             }
 
         }catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            Logger.log("Error while attempting to find first page of table");
             throw new RuntimeException(e);
         }
     }
@@ -178,7 +188,7 @@ public class BTreeNode implements Pages{
                     if(keyExists && successfulReplace == null){
                         Logger.log("Search key was not replaced as it does not exist");
                     }
-                    break;
+                    return;
                 } else if (searchKeyCompare < 0){
                     bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
                 }

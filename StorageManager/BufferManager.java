@@ -169,7 +169,7 @@ public class BufferManager {
             if (useIndexing && rootNode != null) {
                 // Use B+ tree to find the page where this primary key should be inserted
                 // This also inserts the key into the tree
-                int targetPageAddress = rootNode.insertIntoBTree(primaryKey);
+                int targetPageAddress = rootNode.insertIntoBTree(primaryKey, tableName);
                 currentPage = select(targetPageAddress, tableName);
                 
                 // Track if page splits so we can update the B+ tree
