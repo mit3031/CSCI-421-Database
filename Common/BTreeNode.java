@@ -84,6 +84,7 @@ public class BTreeNode implements Pages{
                 if(searchKeyCompare < 0 && !this.internal){
                     return this.IndexEntries.get(nodeSearchKey);
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
                 }
 
@@ -91,6 +92,7 @@ public class BTreeNode implements Pages{
             if(!this.internal){
                 return this.lastPoint;
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             }
         } catch(IOException e){
@@ -118,6 +120,7 @@ public class BTreeNode implements Pages{
                     update();
                     return pageAddress;
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, tableName);
                 }
 
@@ -135,6 +138,7 @@ public class BTreeNode implements Pages{
                 update();
                 return this.lastPoint;
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
             }
 
@@ -162,6 +166,7 @@ public class BTreeNode implements Pages{
                     this.IndexEntries.put(searchKey, pageAddress);
                     update();
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, pageAddress);
                 }
 
@@ -241,6 +246,7 @@ public class BTreeNode implements Pages{
                 if(searchKeyCompare < 0 && !this.internal){
                     return true;
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).checkIfUnique(searchKey);
                 } else if (searchKeyCompare == 0){
                     return false;
@@ -251,6 +257,7 @@ public class BTreeNode implements Pages{
             if(!this.internal){
                 return true;
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).checkIfUnique(searchKey);
             }
         } catch(IOException e){
@@ -285,6 +292,7 @@ public class BTreeNode implements Pages{
                         return true;
                     } else {
                         // if the node is internal, go to the left of that node
+                        Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                         return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
                     }
                 }
@@ -296,6 +304,7 @@ public class BTreeNode implements Pages{
                 update();
                 return true;
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
             }
         } catch(IOException e){
