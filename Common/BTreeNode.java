@@ -192,6 +192,7 @@ public class BTreeNode implements Pages{
                     }
                     return;
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
                 }
 
@@ -204,6 +205,7 @@ public class BTreeNode implements Pages{
                     Logger.log("Search key was not replaced as it does not exist");
                 }
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 BTreeNode newBNode = bufferManager.selectBNode(this.lastPoint);
                 newBNode.updateSearchKeysPage(searchKey, pageAddress);
             }
