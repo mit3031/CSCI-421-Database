@@ -94,7 +94,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when finding page to insert!");
             throw new RuntimeException(e);
         }
 
@@ -139,7 +139,7 @@ public class BTreeNode implements Pages{
             }
 
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
             throw new RuntimeException(e);
         } catch (Exception e) {
             Logger.log("Error while attempting to find first page of table");
@@ -170,7 +170,7 @@ public class BTreeNode implements Pages{
                 bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
             }
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
             throw new RuntimeException(e);
         }
     }
@@ -218,7 +218,7 @@ public class BTreeNode implements Pages{
             }
 
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in updateSearchKeys!");
             throw new RuntimeException(e);
         }
     }
@@ -252,7 +252,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).checkIfUnique(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique check!");
             throw new RuntimeException(e);
         }
     }
@@ -297,7 +297,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique Tree Insert!");
             throw new RuntimeException(e);
         }
     }
@@ -348,7 +348,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique Tree Delete!");
             throw new RuntimeException(e);
         }
 
