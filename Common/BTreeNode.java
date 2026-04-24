@@ -4,6 +4,7 @@ import Catalog.Catalog;
 import Catalog.BTreeSchema;
 import StorageManager.StorageManager;
 import StorageManager.BufferManager;
+import Catalog.TableSchema;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -489,9 +490,18 @@ public class BTreeNode implements Pages{
                     newRoot.IndexEntries.put(maxKey, this.address);
                     //update our parents
                     this.myParent = newHeadPage;
-
                     newNode.myParent = newHeadPage;
+
+                    Logger.log("Updating root of page");
+                    //update schema to have proper root
+                    TableSchema ts = cat.getTable(tableName);
+                    BTreeSchema schema = ts.getIndex(attributeName);
+                    schema.setRootNodeAddress(newHeadPage);
                     Logger.log("Split with new Layer complete! New Root Node: " + newHeadPage);
+                    Logger.log("New head page size: " + newRoot.IndexEntries.size());
+                    Logger.log("This page's size: " + IndexEntries.size());
+                    Logger.log("Other page's Size: " + newNode.IndexEntries.size());
+                    Logger.log("N: " + numEntries);
 
                 }
 
@@ -503,13 +513,15 @@ public class BTreeNode implements Pages{
         else if (( myParent != -1 ) && ( (!internal && count < Math.ceil((numEntries -1)/2.0) ||
                 (internal && count < Math.ceil(numEntries/2.0))))) {
             Logger.log("Tried borrow on page " + address + " But not implemented yet");
+            Logger.log("Size of page: " + IndexEntries.size() + ": N for this table: " + numEntries);
+            Logger.log("Is internal? " + internal);
             //logic for merge/borrow
             //do we need this? if only inserting
             //My thought is no.
         }
         else{
             //log because can it hurt to?
-            Logger.log("Update page " + address + ": Update called but page was perfectly okay!");
+            Logger.log("Update page " + address + ": Update called but size okay! Num entries: " + IndexEntries.size());
 
         }
 
