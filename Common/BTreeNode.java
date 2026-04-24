@@ -369,6 +369,10 @@ public class BTreeNode implements Pages{
                 else{
                     newPage = cat.getFirstFreeAddress();
                 }
+                if(newPage == -1){
+                    Logger.log("Bad new Page!");
+                    return;
+                }
 
 
                 //create our node
@@ -441,8 +445,20 @@ public class BTreeNode implements Pages{
                 else{
                     Logger.log("Node was parent, must create new Root Node...");
                     //case where this was parent, no longer will be
-                    int newHeadPage = cat.getFirstFreePage();
-                    cat.removeFirstFreePage();
+                    int newHeadPage = -1;
+                    if(cat.hasFreePages()){
+                        newHeadPage = cat.getFirstFreePage();
+                        //also remove it so we don't ruin everything
+                        cat.removeFirstFreePage();
+                    }
+                    else{
+                        newHeadPage = cat.getFirstFreeAddress();
+                    }
+                    if (newHeadPage == -1){
+                        Logger.log("Bad new page!");
+                        return;
+                    }
+
                     bm.newBTreeNode(
                             newHeadPage,
                             this.numEntries,
@@ -453,6 +469,7 @@ public class BTreeNode implements Pages{
                     );
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
                     newRoot.modified = true;
+                    Logger.log("Created new Root Node!");
                     //based on my observations, key should be last (max) value of this page
                     Object maxKey = keys.get((int)Math.ceil(keys.size()/2.0 -1));
                     this.lastPoint = this.IndexEntries.get(maxKey);
@@ -460,12 +477,11 @@ public class BTreeNode implements Pages{
                     newRoot.IndexEntries.put(maxKey, this.address);
                     //update our parents
                     this.myParent = newHeadPage;
+
                     newNode.myParent = newHeadPage;
+                    Logger.log("Split with new Layer complete! New Root Node: " + newHeadPage);
+
                 }
-
-
-
-
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
