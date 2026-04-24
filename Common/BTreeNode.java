@@ -60,13 +60,13 @@ public class BTreeNode implements Pages{
         this.IndexEntries.put(searchKey, address);
         modified = true;
         updateLastUsed();
-        update();
+        //update();
     }
     public void deleteIndex(Object searchKey){
         updateLastUsed();
         this.IndexEntries.remove(searchKey);
         modified = true;
-        update();
+        //update();
     }
 
     /**
