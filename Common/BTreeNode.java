@@ -1,8 +1,10 @@
 package Common;
 import AttributeInfo.AttributeTypeEnum;
 import Catalog.Catalog;
+import Catalog.BTreeSchema;
 import StorageManager.StorageManager;
 import StorageManager.BufferManager;
+import Catalog.TableSchema;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -21,7 +23,10 @@ public class BTreeNode implements Pages{
     private Map<Object, Integer> IndexEntries;
     private Instant lastUsed;
     private boolean modified;
-    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint){
+    private String attributeName;
+    private String tableName;
+
+    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName){
         this.numEntries = numEntries;
         this.address = address;
         this.modified = modified;
@@ -31,6 +36,8 @@ public class BTreeNode implements Pages{
         this.myParent = myParent;
         this.searchKeyType = searchKeyType;
         this.lastPoint = lastPoint;
+        this.attributeName = attributeName;
+        this.tableName = tableName;
     }
 
     public int getPageAddress(){ updateLastUsed();return this.address;}
@@ -43,6 +50,8 @@ public class BTreeNode implements Pages{
     public int getNumEntries(){ updateLastUsed();return this.numEntries;}
     public Integer getMyParent(){ updateLastUsed();return this.myParent;}
     public Integer getLastPoint(){ updateLastUsed();return this.lastPoint;}
+    public String getAttributeName(){return this.tableName;}
+    public String returnTableName(){return this.attributeName;}
     public void setLastPoint(Integer lastPoint){this.lastPoint = lastPoint; modified = true;}
     //the delete a node entirely set myparent to null
     public void setMyParent(int myParent){ updateLastUsed();this.myParent = myParent; modified = true; updateLastUsed();}
@@ -51,13 +60,13 @@ public class BTreeNode implements Pages{
         this.IndexEntries.put(searchKey, address);
         modified = true;
         updateLastUsed();
-        update();
+        //update();
     }
     public void deleteIndex(Object searchKey){
         updateLastUsed();
         this.IndexEntries.remove(searchKey);
         modified = true;
-        update();
+        //update();
     }
 
     /**
@@ -85,7 +94,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when finding page to insert!");
             throw new RuntimeException(e);
         }
 
@@ -130,7 +139,7 @@ public class BTreeNode implements Pages{
             }
 
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
             throw new RuntimeException(e);
         } catch (Exception e) {
             Logger.log("Error while attempting to find first page of table");
@@ -161,7 +170,7 @@ public class BTreeNode implements Pages{
                 bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
             }
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
             throw new RuntimeException(e);
         }
     }
@@ -211,7 +220,7 @@ public class BTreeNode implements Pages{
             }
 
         }catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in updateSearchKeys!");
             throw new RuntimeException(e);
         }
     }
@@ -245,7 +254,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).checkIfUnique(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique check!");
             throw new RuntimeException(e);
         }
     }
@@ -290,7 +299,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique Tree Insert!");
             throw new RuntimeException(e);
         }
     }
@@ -341,7 +350,7 @@ public class BTreeNode implements Pages{
                 return bufferManager.selectBNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
             }
         } catch(IOException e){
-            Logger.log("Error while attempting to readBTreeNode");
+            Logger.log("Error while attempting to readBTreeNode in Unique Tree Delete!");
             throw new RuntimeException(e);
         }
 
@@ -371,6 +380,10 @@ public class BTreeNode implements Pages{
                 else{
                     newPage = cat.getFirstFreeAddress();
                 }
+                if(newPage == -1){
+                    Logger.log("Bad new Page!");
+                    return;
+                }
 
 
                 //create our node
@@ -382,7 +395,9 @@ public class BTreeNode implements Pages{
                         this.internal,
                         this.myParent,
                         this.searchKeyType,
-                        this.lastPoint
+                        this.lastPoint,
+                        this.attributeName,
+                        this.tableName
                 );
                 this.lastPoint = newPage;
                 BTreeNode newNode = bm.selectBNode(newPage);
@@ -443,18 +458,33 @@ public class BTreeNode implements Pages{
                 else{
                     Logger.log("Node was parent, must create new Root Node...");
                     //case where this was parent, no longer will be
-                    int newHeadPage = cat.getFirstFreePage();
-                    cat.removeFirstFreePage();
+                    int newHeadPage = -1;
+                    if(cat.hasFreePages()){
+                        newHeadPage = cat.getFirstFreePage();
+                        //also remove it so we don't ruin everything
+                        cat.removeFirstFreePage();
+                    }
+                    else{
+                        newHeadPage = cat.getFirstFreeAddress();
+                    }
+                    if (newHeadPage == -1){
+                        Logger.log("Bad new page!");
+                        return;
+                    }
+
                     bm.newBTreeNode(
                             newHeadPage,
                             this.numEntries,
                             true,
                             -1,
                             this.searchKeyType,
-                            newNode.address
+                            newNode.address,
+                            this.attributeName,
+                            this.tableName
                     );
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
                     newRoot.modified = true;
+                    Logger.log("Created new Root Node!");
                     //based on my observations, key should be last (max) value of this page
                     Object maxKey = keys.get((int)Math.ceil(keys.size()/2.0 -1));
                     this.lastPoint = this.IndexEntries.get(maxKey);
@@ -463,11 +493,19 @@ public class BTreeNode implements Pages{
                     //update our parents
                     this.myParent = newHeadPage;
                     newNode.myParent = newHeadPage;
+
+                    Logger.log("Updating root of page");
+                    //update schema to have proper root
+                    TableSchema ts = cat.getTable(tableName);
+                    BTreeSchema schema = ts.getIndex(attributeName);
+                    schema.setRootNodeAddress(newHeadPage);
+                    Logger.log("Split with new Layer complete! New Root Node: " + newHeadPage);
+                    Logger.log("New head page size: " + newRoot.IndexEntries.size());
+                    Logger.log("This page's size: " + IndexEntries.size());
+                    Logger.log("Other page's Size: " + newNode.IndexEntries.size());
+                    Logger.log("N: " + numEntries);
+
                 }
-
-
-
-
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -477,13 +515,15 @@ public class BTreeNode implements Pages{
         else if (( myParent != -1 ) && ( (!internal && count < Math.ceil((numEntries -1)/2.0) ||
                 (internal && count < Math.ceil(numEntries/2.0))))) {
             Logger.log("Tried borrow on page " + address + " But not implemented yet");
+            Logger.log("Size of page: " + IndexEntries.size() + ": N for this table: " + numEntries);
+            Logger.log("Is internal? " + internal);
             //logic for merge/borrow
             //do we need this? if only inserting
             //My thought is no.
         }
         else{
             //log because can it hurt to?
-            Logger.log("Update page " + address + ": Update called but page was perfectly okay!");
+            Logger.log("Update page " + address + ": Update called but size okay! Num entries: " + IndexEntries.size());
 
         }
 

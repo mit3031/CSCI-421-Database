@@ -74,7 +74,7 @@ public class StorageManager {
                     
                     // Create the root B+ tree node (leaf node initially, no parent)
                     // lastPoint should point to the first data page of the table
-                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, pkType, -1);
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, pkType, -1, attr.getName(), table.getTableName());
                     
                     // Create BTreeSchema and add to table
                     BTreeSchema pkIndex = new BTreeSchema(treeOrder, true, false, pkType);
@@ -100,7 +100,7 @@ public class StorageManager {
                     
                     // Create the root B+ tree node (leaf node initially, no parent)
                     // lastPoint should point to the first data page of the table
-                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, uniqueType, null);
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, uniqueType, -1, attr.getName(), table.getTableName());
                     
                     // Create BTreeSchema and add to table
                     BTreeSchema uniqueIndex = new BTreeSchema(treeOrder, false, false, uniqueType);
