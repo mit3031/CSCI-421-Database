@@ -33,26 +33,28 @@ public class BTreeNode implements Pages{
         this.lastPoint = lastPoint;
     }
 
-    public int getPageAddress(){return this.address;}
-    public void SetModified(boolean modified){this.modified = modified;}
-    public boolean getModified(){return this.modified;}
-    public Instant getLastUsed(){return this.lastUsed;}
-    public void updateLastUsed(){this.lastUsed = Instant.now();}
+    public int getPageAddress(){ updateLastUsed();return this.address;}
+    public void SetModified(boolean modified){ updateLastUsed();this.modified = modified;}
+    public boolean getModified(){ updateLastUsed();return this.modified;}
+    public Instant getLastUsed(){ updateLastUsed();return this.lastUsed;}
+            public void updateLastUsed(){this.lastUsed = Instant.now();}
     public Map<Object, Integer> getIndexEntries(){return this.IndexEntries;}
-    public AttributeTypeEnum getSearchKeyType(){return this.searchKeyType;}
-    public int getNumEntries(){return this.numEntries;}
-    public Integer getMyParent(){return this.myParent;}
-    public Integer getLastPoint(){return this.lastPoint;}
+    public AttributeTypeEnum getSearchKeyType(){ updateLastUsed();return this.searchKeyType;}
+    public int getNumEntries(){ updateLastUsed();return this.numEntries;}
+    public Integer getMyParent(){ updateLastUsed();return this.myParent;}
+    public Integer getLastPoint(){ updateLastUsed();return this.lastPoint;}
     public void setLastPoint(Integer lastPoint){this.lastPoint = lastPoint; modified = true;}
     //the delete a node entirely set myparent to null
-    public void setMyParent(int myParent){this.myParent = myParent; modified = true;}
-    public boolean isInternal(){return this.internal;}
+    public void setMyParent(int myParent){ updateLastUsed();this.myParent = myParent; modified = true; updateLastUsed();}
+    public boolean isInternal(){ updateLastUsed();return this.internal;}
     public void insertIndex(Object searchKey, int address){
         this.IndexEntries.put(searchKey, address);
         modified = true;
+        updateLastUsed();
         update();
     }
     public void deleteIndex(Object searchKey){
+        updateLastUsed();
         this.IndexEntries.remove(searchKey);
         modified = true;
         update();
@@ -66,7 +68,7 @@ public class BTreeNode implements Pages{
      */
     public int findPageToInsert(Object searchKey){
         BufferManager bufferManager = BufferManager.getInstance();
-
+        updateLastUsed();
         try{
             for(Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
@@ -97,7 +99,7 @@ public class BTreeNode implements Pages{
      */
     public int insertIntoBTree(Object searchKey, String tableName){
         BufferManager bufferManager = BufferManager.getInstance();
-
+        updateLastUsed();
         try{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
@@ -143,7 +145,7 @@ public class BTreeNode implements Pages{
      */
     public void insertIntoBTree(Object searchKey, Integer pageAddress){
         BufferManager bufferManager = BufferManager.getInstance();
-
+        updateLastUsed();
         try{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
@@ -353,16 +355,25 @@ public class BTreeNode implements Pages{
         if (count >= numEntries || ( !internal && count >= numEntries -1 ) ){
             //put time as latest possible so that it's not gonna leave memory
             try {
+                Logger.log("Splitting B+Tree page " + this.address);
                 lastUsed = Instant.MAX;
                 this.modified = true;
                 //need new page slot, get from catalog
                 Catalog cat = Catalog.getInstance();
-                int newPage = cat.getFirstFreePage();
-                //also remove it so we don't ruin everything
-                cat.removeFirstFreePage();
+                int newPage = -1;
+                if(cat.hasFreePages()){
+                    newPage = cat.getFirstFreePage();
+                    //also remove it so we don't ruin everything
+                    cat.removeFirstFreePage();
+                }
+                else{
+                    newPage = cat.getFirstFreeAddress();
+                }
+
+
                 //create our node
                 BufferManager bm = BufferManager.getInstance();
-
+                Logger.log("Splitting: Got Free page");
                 bm.newBTreeNode(
                         newPage,
                         this.numEntries,
@@ -374,6 +385,7 @@ public class BTreeNode implements Pages{
                 this.lastPoint = newPage;
                 BTreeNode newNode = bm.selectBNode(newPage);
                 newNode.modified = true;
+                Logger.log("Splitting: Created new node to split into at address " + newPage);
                 //split records, right half into new node, and remove
                 ArrayList keys = new ArrayList<>(this.IndexEntries.keySet());
                 Object newNodeMin = keys.get( (int)Math.ceil(keys.size()/2.0));
@@ -383,18 +395,19 @@ public class BTreeNode implements Pages{
                     newNode.IndexEntries.put(keys.get(i), oldVal);
                     this.IndexEntries.remove(keys.get(i));
                 }
-
+                Logger.log("Added values to new node!");
                 //update parents of new children nodes of new node
                 for (int childIndex : newNode.IndexEntries.values()){
+                    Logger.log("Getting B+Tree Node " + childIndex);
                     BTreeNode child = bm.selectBNode(childIndex);
                     child.setMyParent(newPage);
                 }
-
+                Logger.log("Children of new node updated parent!");
+                newNode.updateLastUsed();
                 StorageManager sm = StorageManager.getStorageManager();
-
                 //update up tree
                 int parentToUpdate = this.myParent;
-
+                Logger.log("Copied entries from this node to new node");
                 if(parentToUpdate != -1){
                     Logger.log("Node was not parent, no additional creation necessary");
                     //case where we have a parent
