@@ -41,6 +41,7 @@ public class StorageManager {
                 firstFreePage = 0;
             } else {
                 firstFreePage = catalog.getFirstFreeAddress();
+                catalog.setFirstFreeAddress(firstFreePage+catalog.getPageSize());
             }
         }
         table.setRootPageID(firstFreePage);
@@ -68,11 +69,12 @@ public class StorageManager {
                         catalog.removeFirstFreePage();
                     } else {
                         bTreeRootAddress = catalog.getFirstFreeAddress();
+                        catalog.setFirstFreeAddress(bTreeRootAddress+catalog.getPageSize());
                     }
                     
                     // Create the root B+ tree node (leaf node initially, no parent)
                     // lastPoint should point to the first data page of the table
-                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, pkType, firstFreePage);
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, pkType, null);
                     
                     // Create BTreeSchema and add to table
                     BTreeSchema pkIndex = new BTreeSchema(treeOrder, true, false, pkType);
@@ -93,11 +95,12 @@ public class StorageManager {
                         catalog.removeFirstFreePage();
                     } else {
                         bTreeRootAddress = catalog.getFirstFreeAddress();
+                        catalog.setFirstFreeAddress(bTreeRootAddress+catalog.getPageSize());
                     }
                     
                     // Create the root B+ tree node (leaf node initially, no parent)
                     // lastPoint should point to the first data page of the table
-                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, uniqueType, firstFreePage);
+                    bufferManager.newBTreeNode(bTreeRootAddress, treeOrder, false, -1, uniqueType, null);
                     
                     // Create BTreeSchema and add to table
                     BTreeSchema uniqueIndex = new BTreeSchema(treeOrder, false, false, uniqueType);
@@ -270,7 +273,7 @@ public class StorageManager {
             BTreeSchema uniqueIndex = table.getIndex(attributeName);
             if (uniqueIndex != null && uniqueIndex.getRootNodeAddress() != -1) {
                 BufferManager bufferManager = BufferManager.getInstance();
-                BTreeNode rootNode = bufferManager.readBTreeNode(uniqueIndex.getRootNodeAddress());
+                BTreeNode rootNode = bufferManager.selectBNode(uniqueIndex.getRootNodeAddress());
                 
                 // insertIntoUniqueTree returns false if value already exists
                 return rootNode.insertIntoUnqiueTree(value);

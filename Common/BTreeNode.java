@@ -73,18 +73,17 @@ public class BTreeNode implements Pages{
                 if(searchKeyCompare < 0 && !this.internal){
                     return this.IndexEntries.get(nodeSearchKey);
                 } else if (searchKeyCompare < 0){
-                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
+                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
                 }
 
                 }
             if(!this.internal){
                 return this.lastPoint;
             } else{
-                return bufferManager.readBTreeNode(this.lastPoint).findPageToInsert(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             }
         } catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
 
@@ -108,7 +107,7 @@ public class BTreeNode implements Pages{
                     update();
                     return pageAddress;
                 } else if (searchKeyCompare < 0){
-                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey);
+                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey);
                 }
 
             }
@@ -118,12 +117,11 @@ public class BTreeNode implements Pages{
                 update();
                 return this.lastPoint;
             } else{
-                return bufferManager.readBTreeNode(this.lastPoint).insertIntoBTree(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey);
             }
 
         }catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
     }
@@ -143,16 +141,15 @@ public class BTreeNode implements Pages{
                     this.IndexEntries.put(searchKey, pageAddress);
                     update();
                 } else if (searchKeyCompare < 0){
-                    bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, pageAddress);
+                    bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, pageAddress);
                 }
 
             }
             if(this.internal){
-                bufferManager.readBTreeNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
+                bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
             }
         }catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
     }
@@ -183,7 +180,7 @@ public class BTreeNode implements Pages{
                     }
                     break;
                 } else if (searchKeyCompare < 0){
-                    bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
+                    bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
                 }
 
             }
@@ -195,12 +192,12 @@ public class BTreeNode implements Pages{
                     Logger.log("Search key was not replaced as it does not exist");
                 }
             } else{
-                bufferManager.readBTreeNode(this.lastPoint).updateSearchKeysPage(searchKey, pageAddress);
+                BTreeNode newBNode = bufferManager.selectBNode(this.lastPoint);
+                newBNode.updateSearchKeysPage(searchKey, pageAddress);
             }
 
         }catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
     }
@@ -221,7 +218,7 @@ public class BTreeNode implements Pages{
                 if(searchKeyCompare < 0 && !this.internal){
                     return true;
                 } else if (searchKeyCompare < 0){
-                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).checkIfUnique(searchKey);
+                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).checkIfUnique(searchKey);
                 } else if (searchKeyCompare == 0){
                     return false;
                 }
@@ -231,11 +228,10 @@ public class BTreeNode implements Pages{
             if(!this.internal){
                 return true;
             } else{
-                return bufferManager.readBTreeNode(this.lastPoint).checkIfUnique(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).checkIfUnique(searchKey);
             }
         } catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
     }
@@ -266,7 +262,7 @@ public class BTreeNode implements Pages{
                         return true;
                     } else {
                         // if the node is internal, go to the left of that node
-                        return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
+                        return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoUnqiueTree(searchKey);
                     }
                 }
             }
@@ -277,11 +273,10 @@ public class BTreeNode implements Pages{
                 update();
                 return true;
             } else{
-                return bufferManager.readBTreeNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).insertIntoUnqiueTree(searchKey);
             }
         } catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
     }
@@ -310,7 +305,7 @@ public class BTreeNode implements Pages{
 
                     // if the search key is less than the current search key in the node then go to the left of that node
                 } else if (searchKeyCompare < 0){
-                    return bufferManager.readBTreeNode(this.IndexEntries.get(nodeSearchKey)).deleteFromUnqiueTree(searchKey);
+                    return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).deleteFromUnqiueTree(searchKey);
                     // if the search key is equal to the current search key in the node then it is not unique and this should return false
                 }
                 // if the search key is larger than the current search key in the node we move on to check the next
@@ -329,11 +324,10 @@ public class BTreeNode implements Pages{
                     return false;
                 }
             } else{
-                return bufferManager.readBTreeNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
+                return bufferManager.selectBNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
             }
         } catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode");
-            lastUsed = Instant.now();
             throw new RuntimeException(e);
         }
 
@@ -368,21 +362,21 @@ public class BTreeNode implements Pages{
                         this.lastPoint
                 );
                 this.lastPoint = newPage;
-                BTreeNode newNode = bm.readBTreeNode(newPage);
+                BTreeNode newNode = bm.selectBNode(newPage);
                 newNode.modified = true;
                 //split records, right half into new node, and remove
-                ArrayList keys = new ArrayList<>(IndexEntries.keySet());
+                ArrayList keys = new ArrayList<>(this.IndexEntries.keySet());
                 Object newNodeMin = keys.get( (int)Math.ceil(keys.size()/2.0));
                 for(int i = (int)Math.ceil(keys.size()/2.0); i<keys.size(); i++){
                     //copy 2nd half to new
-                    int oldVal = IndexEntries.get(keys.get(i));
+                    int oldVal = this.IndexEntries.get(keys.get(i));
                     newNode.IndexEntries.put(keys.get(i), oldVal);
                     this.IndexEntries.remove(keys.get(i));
                 }
 
                 //update parents of new children nodes of new node
                 for (int childIndex : newNode.IndexEntries.values()){
-                    BTreeNode child = bm.readBTreeNode(childIndex);
+                    BTreeNode child = bm.selectBNode(childIndex);
                     child.setMyParent(newPage);
                 }
 
@@ -394,7 +388,7 @@ public class BTreeNode implements Pages{
                 if(parentToUpdate != -1){
                     Logger.log("Node was not parent, no additional creation necessary");
                     //case where we have a parent
-                    BTreeNode parent = bm.readBTreeNode(parentToUpdate);
+                    BTreeNode parent = bm.selectBNode(parentToUpdate);
 
                     //What is the key here, last value of this page?
                     //todo figure out above comment
@@ -408,7 +402,7 @@ public class BTreeNode implements Pages{
                     }
                     //if not found in that loop,was last entry
                     if(!found){
-                        if(parent.lastPoint != address){
+                        if(parent.lastPoint != this.address){
                             Logger.log("Potentially fatal Error: did not find address in parent when updating!");
                         }
                         parent.lastPoint = newPage;
@@ -432,15 +426,15 @@ public class BTreeNode implements Pages{
                             this.searchKeyType,
                             newNode.address
                     );
-                    BTreeNode newRoot = bm.readBTreeNode(newHeadPage);
+                    BTreeNode newRoot = bm.selectBNode(newHeadPage);
                     newRoot.modified = true;
                     //based on my observations, key should be last (max) value of this page
                     Object maxKey = keys.get((int)Math.ceil(keys.size()/2.0 -1));
-                    this.lastPoint = IndexEntries.get(maxKey);
-                    IndexEntries.remove(maxKey);
+                    this.lastPoint = this.IndexEntries.get(maxKey);
+                    this.IndexEntries.remove(maxKey);
                     newRoot.IndexEntries.put(maxKey, this.address);
                     //update our parents
-                    myParent = newHeadPage;
+                    this.myParent = newHeadPage;
                     newNode.myParent = newHeadPage;
                 }
 
@@ -449,7 +443,6 @@ public class BTreeNode implements Pages{
 
 
             } catch (IOException e) {
-                lastUsed = Instant.now();
                 throw new RuntimeException(e);
             }
 
@@ -466,8 +459,7 @@ public class BTreeNode implements Pages{
             Logger.log("Update page " + address + ": Update called but page was perfectly okay!");
 
         }
-        //note that we accessed this page and change it's time
-        lastUsed = Instant.now();
+
     }
 
 }

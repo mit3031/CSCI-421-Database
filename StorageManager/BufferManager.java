@@ -102,6 +102,12 @@ public class BufferManager {
         return page;
     }
 
+    public BTreeNode selectBNode(int address) throws IOException {
+        BTreeNode bTreeNode = readBTreeNode(address);
+        bTreeNode.updateLastUsed();
+        return bTreeNode;
+    }
+
     /**
      * Inserts a row(s) into the proper page based on primary key order. This is a brute-force approach
      * @param tableName the name of the table to insert the row(s) into
@@ -138,7 +144,7 @@ public class BufferManager {
         if (useIndexing) {
             pkBTreeSchema = table.getIndex(pkAttribute.getName());
             if (pkBTreeSchema != null && pkBTreeSchema.getRootNodeAddress() != -1) {
-                rootNode = readBTreeNode(pkBTreeSchema.getRootNodeAddress());
+                rootNode = selectBNode(pkBTreeSchema.getRootNodeAddress());
             } else {
                 useIndexing = false; // Fall back to linear search if no B+ tree
             }
@@ -596,7 +602,7 @@ public class BufferManager {
         }
     }
 
-    public BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
+    private BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
         if (this.bufferPages.containsKey(pageAddress)) {
             return (BTreeNode) this.bufferPages.get(pageAddress);
         }
