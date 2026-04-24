@@ -224,6 +224,7 @@ public class BufferManager {
                 
                 // If page address changed due to split, update the B+ tree
                 if (currentPage.getPageAddress() != originalPageAddress) {
+
                     rootNode.updateSearchKeysPage(primaryKey, currentPage.getPageAddress());
                 }
                 
@@ -576,6 +577,7 @@ public class BufferManager {
                 return; // Exit early after writing empty page
             }
             //add overhead info like myParent
+            currentNode.writeInt(treeNode.getIndexEntries().size());
             currentNode.writeInt(treeNode.getNumEntries());
             currentNode.write((byte) (treeNode.isInternal() ? 1: 0));
             currentNode.writeInt(treeNode.getMyParent());
@@ -619,6 +621,7 @@ public class BufferManager {
         }
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")) {
             currentPage.seek(pageAddress);
+            Integer size = currentPage.readInt();
             Integer numEntries = currentPage.readInt();
             Boolean isInternal = currentPage.read() == 1;
             Integer myParent = currentPage.readInt();
@@ -635,7 +638,7 @@ public class BufferManager {
             currentPage.readFully(varchars);
             String tableName = new String(varchars, StandardCharsets.UTF_8);
             BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint, attributeName, tableName);
-            for(int i = 0; i < numEntries; i++) {
+            for(int i = 0; i < size; i++) {
                 Object Key = null;
                 switch (searchKeyType) {
                     case INTEGER:

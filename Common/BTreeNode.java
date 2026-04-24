@@ -190,7 +190,8 @@ public class BTreeNode implements Pages{
      */
     public void updateSearchKeysPage(Object searchKey, Integer pageAddress){
         BufferManager bufferManager = BufferManager.getInstance();
-
+        Catalog cat = Catalog.getInstance();
+        Logger.log("First free add: " + cat.getFirstFreeAddress());
         try{
             boolean replaced = false;
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
