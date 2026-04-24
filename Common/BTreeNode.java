@@ -206,7 +206,7 @@ public class BTreeNode implements Pages{
                     }
                     return;
                 } else if (searchKeyCompare < 0){
-                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " on node search key " + nodeSearchKey + "for search key " + searchKey);
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " on node search key " + nodeSearchKey + " for search key " + searchKey);
 
                     bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).updateSearchKeysPage(searchKey, pageAddress);
                 }
