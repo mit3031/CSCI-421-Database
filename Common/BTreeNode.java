@@ -437,7 +437,8 @@ public class BTreeNode implements Pages{
                         //placeholder someone change this
                         this.isRightMost
                 );
-
+                //will always have something to the right of it nows
+                this.isRightMost = false;
 
                 Logger.log("Getting newly created page from BM: Address: " + newPage);
                 BTreeNode newNode = bm.selectBNode(newPage);
@@ -533,7 +534,7 @@ public class BTreeNode implements Pages{
                             this.attributeName,
                             this.tableName,
                             //placeholder someone change this
-                            this.isRightMost
+                            true //will always be rightmost of it's layer, stands alone
                     );
                     Logger.log("Getting new Root from BM...");
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
