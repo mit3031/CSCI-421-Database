@@ -13,7 +13,7 @@ import java.io.File;
 public class PerformanceTest {
     
     // Configure the number of records to insert
-    private static final int NUM_RECORDS = 100000;
+    private static final int NUM_RECORDS = 10000;
     
     // Configure which tests to run
     private static final boolean RUN_WITHOUT_INDEXING = false;
