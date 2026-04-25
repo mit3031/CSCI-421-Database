@@ -133,17 +133,25 @@ public class BTreeNode implements Pages{
 
             }
             if(!this.internal){
-                if(IndexEntries.isEmpty()){
+                if(IndexEntries.isEmpty() && lastPoint == -1){
+                    Logger.log("try to update the lastpoint if there is nothing in the tree");
                     Catalog catalog = Catalog.getInstance();
                     int firstPageofTable = catalog.getAddressOfPage(tableName);
                     this.IndexEntries.put(searchKey, firstPageofTable);
                     this.lastPoint = firstPageofTable;
                     update();
+                    this.isRightMost = true;
+                    return lastPoint;
                 }
-                this.IndexEntries.put(searchKey, this.lastPoint);
-                this.modified = true;
-                update();
-                return this.lastPoint;
+                if(this.isRightMost) {
+                    this.IndexEntries.put(searchKey, this.lastPoint);
+                    this.modified = true;
+                    update();
+                    return this.lastPoint;
+                } else{
+                    Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
+                    return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
+                }
             } else{
                 Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
@@ -205,6 +213,9 @@ public class BTreeNode implements Pages{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
                 if(!this.internal){
+                    if(this.isRightMost){
+                        lastPoint = pageAddress;
+                    }
                     //Variable keyExists is only used for debugging
                     boolean keyExists = this.IndexEntries.containsKey(searchKey);
                     //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
@@ -225,6 +236,9 @@ public class BTreeNode implements Pages{
                 boolean keyExists = this.IndexEntries.containsKey(searchKey);
                 //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
                 Object successfulReplace = this.IndexEntries.replace(searchKey, pageAddress);
+                if(isRightMost){
+                    lastPoint = pageAddress;
+                }
                 if(keyExists && successfulReplace == null){
                     Logger.log("Search key was not replaced as it does not exist");
                 }
