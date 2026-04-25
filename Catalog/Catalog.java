@@ -199,7 +199,8 @@ public class Catalog {
         int pointerSize = 4;
         int searchKeySize = def.getByteSize();
 
-        int n = pageSize / (searchKeySize + pointerSize);
+        //Placeholder for metadata: 100 bytes
+        int n = (pageSize - 100) / (searchKeySize + pointerSize);
 
         return n;
     }
