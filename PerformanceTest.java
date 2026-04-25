@@ -25,6 +25,12 @@ public class PerformanceTest {
     // Configure batch size (smaller = less memory, more operations)
     private static final int BATCH_SIZE = 100;
     
+    // Configure whether to verify primary key ordering with SELECT * after insertion
+    private static final boolean VERIFY_ORDER = false;
+    
+    // Configure whether to randomize insertion order (useful for testing ordering)
+    private static final boolean RANDOMIZE_INSERTION = false;
+    
     /**
      * Recursively deletes a directory and all its contents
      */
@@ -59,20 +65,19 @@ public class PerformanceTest {
     /**
      * Builds a batch INSERT command with multiple rows
      * @param tableName name of the table to insert into
-     * @param startId starting ID value
-     * @param count number of rows to generate
+     * @param ids list of IDs to insert
      * @return complete INSERT command string
      */
-    private static String buildBatchInsertCommand(String tableName, int startId, int count) {
+    private static String buildBatchInsertCommand(String tableName, List<Integer> ids) {
         StringBuilder cmd = new StringBuilder();
         cmd.append("INSERT ").append(tableName).append(" VALUES (");
         
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < ids.size(); i++) {
             if (i > 0) {
                 cmd.append(",");
             }
             
-            int id = startId + i;
+            int id = ids.get(i);
             double value = id * 1.5;
             String name = "n" + (id % 1000);
             
@@ -118,6 +123,20 @@ public class PerformanceTest {
             TableSchema table = new TableSchema(tableName, attrs);
             store.CreateTable(table);
             
+            // Generate list of IDs to insert
+            List<Integer> allIds = new ArrayList<>();
+            for (int i = 1; i <= NUM_RECORDS; i++) {
+                allIds.add(i);
+            }
+            
+            // Randomize insertion order if requested
+            if (RANDOMIZE_INSERTION) {
+                Collections.shuffle(allIds);
+                System.out.println("Insertion order: RANDOMIZED");
+            } else {
+                System.out.println("Insertion order: SEQUENTIAL");
+            }
+            
             // Insert records in batches to reduce memory usage
             System.out.println("Inserting " + NUM_RECORDS + " rows in batches of " + BATCH_SIZE + "...\n");
             
@@ -126,7 +145,8 @@ public class PerformanceTest {
             int recordsInserted = 0;
             while (recordsInserted < NUM_RECORDS) {
                 int batchSize = Math.min(BATCH_SIZE, NUM_RECORDS - recordsInserted);
-                String batchInsert = buildBatchInsertCommand(tableName, recordsInserted + 1, batchSize);
+                List<Integer> batchIds = allIds.subList(recordsInserted, recordsInserted + batchSize);
+                String batchInsert = buildBatchInsertCommand(tableName, batchIds);
                 ParserDML.runCommand(batchInsert);
                 recordsInserted += batchSize;
                 
@@ -138,6 +158,19 @@ public class PerformanceTest {
             
             long endTime = System.currentTimeMillis();
             long elapsed = endTime - startTime;
+            
+            // Verify primary key ordering if requested
+            if (VERIFY_ORDER) {
+                System.out.println("\n========================================");
+                System.out.println("VERIFYING PRIMARY KEY ORDER");
+                System.out.println("========================================");
+                String selectQuery = "SELECT * FROM " + tableName + ";";
+                System.out.println("Running: " + selectQuery);
+                System.out.println();
+                
+                ParserDML.runCommand(selectQuery);
+                
+            }
             
             // Display results
             System.out.println("\n========================================");
