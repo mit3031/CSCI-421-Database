@@ -95,7 +95,7 @@ public class BufferManager {
      */
     public Page select(int address, String tableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
-        Logger.log("BM Trying to read tablename " + tableName + " Page at address " + address);
+        //Logger.log("BM Trying to read tablename " + tableName + " Page at address " + address);
         if(!catalog.tableExists(tableName)){
             throw new Exception("Table " + tableName + " does not exist");
         }
@@ -105,7 +105,7 @@ public class BufferManager {
     }
 
     public BTreeNode selectBNode(int address) throws IOException {
-        Logger.log("Buffer Manager received message to read BNode at addr " + address);
+        //Logger.log("Buffer Manager received message to read BNode at addr " + address);
         BTreeNode bTreeNode = readBTreeNode(address);
         bTreeNode.updateLastUsed();
         return bTreeNode;
@@ -583,10 +583,11 @@ public class BufferManager {
             }
             //add overhead info like myParent
             currentNode.writeInt(treeNode.getIndexEntries().size());
-            Logger.log("WRITING PAGE " + treeNode.getPageAddress());
-            Logger.log("Size Written: " + treeNode.getIndexEntries().size());
+            //Logger.log("WRITING PAGE " + treeNode.getPageAddress());
+            //Logger.log("Size Written: " + treeNode.getIndexEntries().size());
             currentNode.writeInt(treeNode.getNumEntries());
-            Logger.log("n Written: " + treeNode.getNumEntries());
+            //Logger.log("n Written: " + treeNode.getNumEntries());
+            //Logger.log("Parent: " + treeNode.getMyParent());
             currentNode.write((byte) (treeNode.isInternal() ? 1: 0));
             currentNode.writeInt(treeNode.getMyParent());
             //get type of search key
@@ -623,7 +624,7 @@ public class BufferManager {
                 }
                 currentNode.writeInt(entry.getValue());
             }
-            Logger.log("How far into thing: " + currentNode.getFilePointer());
+            //Logger.log("How far into thing: " + currentNode.getFilePointer());
         } catch (RuntimeException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -640,10 +641,10 @@ public class BufferManager {
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")) {
             currentPage.seek(pageAddress);
             Integer size = currentPage.readInt();
-            Logger.log("READING ADDRESS " + pageAddress);
-            Logger.log("Size read: " + size);
+            //Logger.log("READING ADDRESS " + pageAddress);
+            //Logger.log("Size read: " + size);
             Integer numEntries = currentPage.readInt();
-            Logger.log("N Read: " + numEntries);
+            //Logger.log("N Read: " + numEntries);
             Boolean isInternal = currentPage.read() == 1;
             Integer myParent = currentPage.readInt();
             AttributeTypeEnum searchKeyType = getEnumFromCode(currentPage.readInt());
@@ -694,7 +695,7 @@ public class BufferManager {
 
     //DO NOT CALL buffer manager handles this
     private void writePage(Page page) throws IOException {
-        Logger.log("Writing data page " + page.getPageAddress());
+        //Logger.log("Writing data page " + page.getPageAddress());
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "rw")){
             currentPage.seek(page.getPageAddress());
             Catalog catalog = Catalog.getInstance();

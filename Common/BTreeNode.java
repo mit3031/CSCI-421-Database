@@ -81,20 +81,24 @@ public class BTreeNode implements Pages{
     public int findPageToInsert(Object searchKey){
         BufferManager bufferManager = BufferManager.getInstance();
         updateLastUsed();
+        Logger.log("Trying to find where to insert " + searchKey + " in bTreeNode " + address);
         try{
             for(Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                Logger.log("Comparing " + searchKey + " to " + nodeSearchKey);
                 if(searchKeyCompare < 0 && !this.internal){
+                    Logger.log("Was found to be less on leaf node, returning Page...");
                     return this.IndexEntries.get(nodeSearchKey);
                 } else if (searchKeyCompare < 0){
-                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
+                    Logger.log("Was found to be less on internal node, moving down a level");
+                    //Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
                 }
 
                 }
             if(!this.internal){
                 //return this.lastPoint;
-                Logger.log("Reached end of leaf node and did not find key");
+                Logger.log("Reached end of leaf node and did not find key: " + isRightMost);
                 return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             } else{
                 Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
@@ -116,16 +120,20 @@ public class BTreeNode implements Pages{
     public int insertIntoBTree(Object searchKey, String tableName){
         BufferManager bufferManager = BufferManager.getInstance();
         updateLastUsed();
+        Logger.log("Inserting " + searchKey + " into btree addr " + address);
         try{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                Logger.log("Comparing " + searchKey + " to " + nodeSearchKey);
                 if(searchKeyCompare < 0 && !this.internal){
+                    Logger.log("Was found to be less, on leaf node, going to page " + IndexEntries.get(nodeSearchKey));
                     Integer pageAddress = this.IndexEntries.get(nodeSearchKey);
                     this.IndexEntries.put(searchKey, pageAddress);
                     update();
                     return pageAddress;
                 } else if (searchKeyCompare < 0){
-                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
+                    Logger.log("Found to be less on internal node, traverse down tree!");
+                    //Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, tableName);
                 } else if (searchKeyCompare == 0){
                     throw new Exception("Primary key error: Primary key " + searchKey + " already exists");
@@ -144,6 +152,7 @@ public class BTreeNode implements Pages{
                     return lastPoint;
                 }
                 if(this.isRightMost) {
+                    Logger.log("Rightmost leaf insert into page " + lastPoint);
                     this.IndexEntries.put(searchKey, this.lastPoint);
                     this.modified = true;
                     update();
@@ -173,19 +182,25 @@ public class BTreeNode implements Pages{
      * Used to insert a search key with a specific page address into the b+ tree
      * @param searchKey the search key to insert into the tree
      * @param pageAddress the address to insert with the key
+     * This method is never called.
      */
     public void insertIntoBTree(Object searchKey, Integer pageAddress){
         BufferManager bufferManager = BufferManager.getInstance();
         updateLastUsed();
+        Logger.log("Trying insert of " + searchKey + " into BTree address " + address);
         try{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                Logger.log("Comparing searchkey " + searchKey + " with value in BTree " + nodeSearchKey);
                 if(searchKeyCompare < 0 && !this.internal){
+                    Logger.log("was less than and at leaf, adding to leaf node...");
                     this.IndexEntries.put(searchKey, pageAddress);
                     update();
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Was less than, traversing down tree");
                     Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, pageAddress);
+                    return;
                 }
 
             }
@@ -306,7 +321,7 @@ public class BTreeNode implements Pages{
             // loop through every search key in this node to follow the tree down to where the search key we are trying to insert goes
             for(Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
-                
+
                 // FIRST check if the search key is equal to the current search key - if so, it's not unique
                 if (searchKeyCompare == 0){
                     return false;
