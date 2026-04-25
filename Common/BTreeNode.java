@@ -149,14 +149,18 @@ public class BTreeNode implements Pages{
                     this.lastPoint = firstPageofTable;
                     update();
                     this.isRightMost = true;
-                    return lastPoint;
+                    // Return the page address we stored (not from IndexEntries after split)
+                    return firstPageofTable;
                 }
                 if(this.isRightMost) {
                     Logger.log("Rightmost leaf insert into page " + lastPoint);
-                    this.IndexEntries.put(searchKey, this.lastPoint);
+                    Integer pageAddress = this.lastPoint;  // Store before update
+                    this.IndexEntries.put(searchKey, pageAddress);
                     this.modified = true;
                     update();
-                    return this.lastPoint;
+                    // After update, the key might have been moved to a new node during splitting
+                    // Return the page address we stored before the split
+                    return pageAddress;
                 } else{
 
                     Logger.log("Trying to get node (from last point) at address "+ this.lastPoint + " for search key " + searchKey);
@@ -318,6 +322,49 @@ public class BTreeNode implements Pages{
      * @return True if the search key is unique, False if it is not
      * @Author Logan Maleady lpm5781
      */
+    /**
+     * Checks if a search key exists in the unique tree WITHOUT inserting it
+     * @param searchKey the key to check for
+     * @return true if the key does NOT exist (unique), false if it already exists
+     * @Author Fix for batch insert unique constraint checking
+     */
+    public boolean checkUniqueKeyExists(Object searchKey){
+        BufferManager bufferManager = BufferManager.getInstance();
+        try{
+            // loop through every search key in this node to find if the search key exists
+            for(Object nodeSearchKey : this.IndexEntries.keySet()){
+                int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+
+                // If the search key equals a node key, it already exists (not unique)
+                if (searchKeyCompare == 0){
+                    return false; // Found it - not unique
+                }
+                // if the search key is less than the current search key in the node
+                else if (searchKeyCompare < 0){
+                    if(!this.internal){
+                        // Leaf node: key doesn't exist in this node, so it's unique
+                        return true;
+                    } else {
+                        // Internal node: traverse left
+                        return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).checkUniqueKeyExists(searchKey);
+                    }
+                }
+            }
+
+            // Key is greater than all keys in this node
+            if(!this.internal){
+                // Leaf node: key doesn't exist, so it's unique
+                return true;
+            } else{
+                // Internal node: traverse rightmost pointer
+                return bufferManager.selectBNode(this.lastPoint).checkUniqueKeyExists(searchKey);
+            }
+        } catch(IOException e){
+            Logger.log("Error while attempting to readBTreeNode in checkUniqueKeyExists!");
+            throw new RuntimeException(e);
+        }
+    }
+
     public boolean insertIntoUnqiueTree(Object searchKey){
         BufferManager bufferManager = BufferManager.getInstance();
         try{
@@ -436,6 +483,7 @@ public class BTreeNode implements Pages{
                 }
                 else{
                     newPage = cat.getFirstFreeAddress();
+                    cat.setFirstFreeAddress(newPage + cat.getPageSize());
                 }
                 if(newPage == -1){
                     Logger.log("Bad new Page!");
@@ -539,6 +587,7 @@ public class BTreeNode implements Pages{
                     }
                     else{
                         newHeadPage = cat.getFirstFreeAddress();
+                        cat.setFirstFreeAddress(newHeadPage + cat.getPageSize());
                     }
                     if (newHeadPage == -1){
                         Logger.log("Bad new page!");

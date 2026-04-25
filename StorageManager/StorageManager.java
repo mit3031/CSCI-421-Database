@@ -127,6 +127,8 @@ public class StorageManager {
         bufferManager.flushAllPages();
         System.out.println("Writing catalog to hardware...");
         bufferManager.saveToDisk();
+        System.out.println("Closing database file...");
+        bufferManager.closeDatabase();
     }
     public void bootup() {
         BufferManager bufferManager = BufferManager.getInstance();
@@ -275,8 +277,9 @@ public class StorageManager {
                 BufferManager bufferManager = BufferManager.getInstance();
                 BTreeNode rootNode = bufferManager.selectBNode(uniqueIndex.getRootNodeAddress());
                 
-                // insertIntoUniqueTree returns false if value already exists
-                return rootNode.insertIntoUnqiueTree(value);
+                // Use checkUniqueKeyExists to only CHECK without inserting
+                // The actual insertion into the B+ tree happens later during BufferManager.insert()
+                return rootNode.checkUniqueKeyExists(value);
             }
         }
         
