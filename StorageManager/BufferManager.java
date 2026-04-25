@@ -52,9 +52,9 @@ public class BufferManager {
         newPage.SetModified(true);
     }
 
-        public void newBTreeNode(int Address,int numEntries, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName) throws IOException {
+        public void newBTreeNode(int Address,int numEntries, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName, boolean isRightMost) throws IOException {
         Catalog catalog = Catalog.getInstance();
-        BTreeNode bTreeNode = new BTreeNode(numEntries, Address, true, internal, myParent, searchKeyType, lastPoint, attributeName, tableName);
+        BTreeNode bTreeNode = new BTreeNode(numEntries, Address, true, internal, myParent, searchKeyType, lastPoint, attributeName, tableName, isRightMost);
         catalog.setFirstFreeAddress(catalog.getFirstFreeAddress()+catalog.getPageSize());
         addPageToBuffer(bTreeNode);
     }
@@ -599,6 +599,7 @@ public class BufferManager {
             //write first length of tableName then actual string
             currentNode.writeInt(treeNode.returnTableName().length());
             currentNode.write(treeNode.returnTableName().getBytes(StandardCharsets.UTF_8));
+            currentNode.write((byte) (treeNode.getIsRightMost() ? 1: 0));
             //write each indexEntry in searchkey, address order.
             for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
                 switch (type) {
@@ -657,7 +658,8 @@ public class BufferManager {
             byte[] varchars = new byte[tableLen];
             currentPage.readFully(varchars);
             String tableName = new String(varchars, StandardCharsets.UTF_8);
-            BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint, attributeName, tableName);
+            boolean isRightMost = currentPage.read() == 1;
+            BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint, attributeName, tableName, isRightMost);
             for(int i = 0; i < size; i++) {
                 Object Key = null;
                 switch (searchKeyType) {

@@ -25,8 +25,9 @@ public class BTreeNode implements Pages{
     private boolean modified;
     private String attributeName;
     private String tableName;
+    private boolean isRightMost;
 
-    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName){
+    public BTreeNode(int numEntries, int address, boolean modified, boolean internal, Integer myParent, AttributeTypeEnum searchKeyType, Integer lastPoint, String attributeName, String tableName, boolean isRightMost){
         this.numEntries = numEntries;
         this.address = address;
         this.modified = modified;
@@ -38,6 +39,7 @@ public class BTreeNode implements Pages{
         this.lastPoint = lastPoint;
         this.attributeName = attributeName;
         this.tableName = tableName;
+        this.isRightMost = isRightMost;
     }
 
     public int getPageAddress(){ updateLastUsed();return this.address;}
@@ -52,6 +54,7 @@ public class BTreeNode implements Pages{
     public Integer getLastPoint(){ updateLastUsed();return this.lastPoint;}
     public String getAttributeName(){return this.tableName;}
     public String returnTableName(){return this.attributeName;}
+    public boolean getIsRightMost(){return this.isRightMost;}
     public void setLastPoint(Integer lastPoint){this.lastPoint = lastPoint; modified = true;}
     //the delete a node entirely set myparent to null
     public void setMyParent(int myParent){ updateLastUsed();this.myParent = myParent; modified = true; updateLastUsed();}
@@ -416,7 +419,9 @@ public class BTreeNode implements Pages{
                         this.searchKeyType,
                         this.lastPoint,
                         this.attributeName,
-                        this.tableName
+                        this.tableName,
+                        //placeholder someone change this
+                        this.isRightMost
                 );
 
 
@@ -512,7 +517,9 @@ public class BTreeNode implements Pages{
                             this.searchKeyType,
                             newNode.address,
                             this.attributeName,
-                            this.tableName
+                            this.tableName,
+                            //placeholder someone change this
+                            this.isRightMost
                     );
                     Logger.log("Getting new Root from BM...");
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
