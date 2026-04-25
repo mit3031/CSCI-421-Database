@@ -20,7 +20,7 @@ public class BTreeNode implements Pages{
     private Integer myParent;
     private Integer lastPoint;
     //-1 if no address
-    private Map<Object, Integer> IndexEntries;
+    private TreeMap<Object, Integer> IndexEntries;
     private Instant lastUsed;
     private boolean modified;
     private String attributeName;
@@ -86,11 +86,12 @@ public class BTreeNode implements Pages{
             for(Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
                 Logger.log("Comparing " + searchKey + " to " + nodeSearchKey);
+                Logger.log(nodeSearchKey + "'s page: " + IndexEntries.get(nodeSearchKey));
                 if(searchKeyCompare < 0 && !this.internal){
                     Logger.log("Was found to be less on leaf node, returning Page...");
                     return this.IndexEntries.get(nodeSearchKey);
                 } else if (searchKeyCompare < 0){
-                    Logger.log("Was found to be less on internal node, moving down a level");
+                    Logger.log("Was found to be less on internal nod e, moving down a level");
                     //Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).findPageToInsert(searchKey);
                 }
@@ -125,6 +126,7 @@ public class BTreeNode implements Pages{
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
                 Logger.log("Comparing " + searchKey + " to " + nodeSearchKey);
+                Logger.log(nodeSearchKey + "'s Page: " + IndexEntries.get(nodeSearchKey));
                 if(searchKeyCompare < 0 && !this.internal){
                     Logger.log("Was found to be less, on leaf node, going to page " + IndexEntries.get(nodeSearchKey));
                     Integer pageAddress = this.IndexEntries.get(nodeSearchKey);
@@ -196,6 +198,7 @@ public class BTreeNode implements Pages{
                     Logger.log("was less than and at leaf, adding to leaf node...");
                     this.IndexEntries.put(searchKey, pageAddress);
                     update();
+                    return;
                 } else if (searchKeyCompare < 0){
                     Logger.log("Was less than, traversing down tree");
                     Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
@@ -205,8 +208,11 @@ public class BTreeNode implements Pages{
 
             }
             if(this.internal){
-                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
+                Logger.log("Trying to get node at LAST address "+ this.lastPoint + " for search key " + searchKey);
                 bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
+            }
+            else{
+                Logger.log("ZXCV NO BTREE INSERT");
             }
         }catch(IOException e){
             Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
@@ -231,17 +237,28 @@ public class BTreeNode implements Pages{
             boolean replaced = false;
             for (Object nodeSearchKey : this.IndexEntries.keySet()){
                 int searchKeyCompare = ((Comparable)searchKey).compareTo(nodeSearchKey);
+                Logger.log("Checking " + nodeSearchKey);
                 if(!this.internal){
                     if(this.isRightMost){
-                        lastPoint = pageAddress;
+                        //lastPoint = pageAddress;
                     }
                     //Variable keyExists is only used for debugging
                     boolean keyExists = this.IndexEntries.containsKey(searchKey);
                     //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
+                    //check if last key, if so also update lastvalue
+                    if (isRightMost && ((Comparable)searchKey).compareTo(IndexEntries.lastKey()) == 0){
+                        this.lastPoint = pageAddress;
+                    }
                     Logger.log("Replacing " + IndexEntries.get(searchKey) + " with " + pageAddress);
                     Object successfulReplace = this.IndexEntries.replace(searchKey, pageAddress);
 
                     replaced = true;
+                    if(!keyExists){
+                        Logger.log("Could not find " + searchKey + " In leaf page!");
+                        for (Object o : IndexEntries.keySet()){
+                            Logger.log("\t" + o);
+                        }
+                    }
                     if(keyExists && successfulReplace == null){
                         Logger.log("Search key was not replaced as it does not exist");
                     }
