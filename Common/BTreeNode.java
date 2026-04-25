@@ -132,7 +132,7 @@ public class BTreeNode implements Pages{
                 }
 
             }
-            if(!this.internal){
+            if(!this.internal){ //leaf cases
                 if(IndexEntries.isEmpty() && lastPoint == -1){
                     Logger.log("try to update the lastpoint if there is nothing in the tree");
                     Catalog catalog = Catalog.getInstance();
@@ -149,8 +149,10 @@ public class BTreeNode implements Pages{
                     update();
                     return this.lastPoint;
                 } else{
-                    Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
-                    return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
+
+                    Logger.log("Trying to get node (from last point) at address "+ this.lastPoint + " for search key " + searchKey);
+                    return this.lastPoint; //since leaf and rightmost, shouild be a data page.
+                    //return bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, tableName);
                 }
             } else{
                 Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
@@ -162,6 +164,7 @@ public class BTreeNode implements Pages{
             throw new RuntimeException(e);
         } catch (Exception e) {
             Logger.log("Error while attempting to find first page of table or primary key");
+            Logger.log(e.getMessage());
             throw new RuntimeException(e);
         }
     }

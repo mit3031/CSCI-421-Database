@@ -525,8 +525,8 @@ public class BufferManager {
                 }
             }
         }
-        Logger.log("Least recently used page: " + leastRecentlyUsedPage);
-        Logger.log("Least recently used Page TIme: " + leastRecentlyUsedTime);
+        //Logger.log("Least recently used page: " + leastRecentlyUsedPage);
+        //Logger.log("Least recently used Page TIme: " + leastRecentlyUsedTime);
         return leastRecentlyUsedPage;
     }
 
@@ -694,6 +694,7 @@ public class BufferManager {
 
     //DO NOT CALL buffer manager handles this
     private void writePage(Page page) throws IOException {
+        Logger.log("Writing data page " + page.getPageAddress());
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "rw")){
             currentPage.seek(page.getPageAddress());
             Catalog catalog = Catalog.getInstance();
