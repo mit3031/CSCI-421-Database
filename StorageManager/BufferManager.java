@@ -554,9 +554,7 @@ public class BufferManager {
      */
     public void closeDatabase() throws IOException {
         if (dbFile != null) {
-            synchronized (dbFile) {
-                dbFile.close();
-            }
+            dbFile.close();
         }
     }
 
@@ -626,9 +624,8 @@ public class BufferManager {
 
     //DO NOT CALL buffer manager handles this
     private void writeBTreeNode(BTreeNode treeNode) throws FileNotFoundException {
-        synchronized (dbFile) {
-            try {
-                dbFile.seek(treeNode.getPageAddress());
+        try {
+            dbFile.seek(treeNode.getPageAddress());
                 if (treeNode.getMyParent() == null) {
                     Catalog catalog = Catalog.getInstance();
                     catalog.addFirstFreePage(treeNode.getPageAddress());
@@ -681,9 +678,8 @@ public class BufferManager {
                     dbFile.writeInt(entry.getValue());
                 }
                 //Logger.log("How far into thing: " + dbFile.getFilePointer());
-            } catch (RuntimeException | IOException e) {
-                throw new RuntimeException(e);
-            }
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -695,8 +691,7 @@ public class BufferManager {
         if (this.bufferPages.containsKey(pageAddress)) {
             return (BTreeNode) this.bufferPages.get(pageAddress);
         }
-        synchronized (dbFile) {
-            dbFile.seek(pageAddress);
+        dbFile.seek(pageAddress);
             Integer size = dbFile.readInt();
             //Logger.log("READING ADDRESS " + pageAddress);
             //Logger.log("Size read: " + size);
@@ -746,15 +741,13 @@ public class BufferManager {
 //                Logger.log(Entry.toString());
 //            }
 
-            return bNode;
-        }
+        return bNode;
     }
 
     //DO NOT CALL buffer manager handles this
     private void writePage(Page page) throws IOException {
         //Logger.log("Writing data page " + page.getPageAddress());
-        synchronized (dbFile) {
-            dbFile.seek(page.getPageAddress());
+        dbFile.seek(page.getPageAddress());
             Catalog catalog = Catalog.getInstance();
             if (page.getTableName() == null) {
                 catalog.addFirstFreePage(page.getPageAddress());
@@ -844,7 +837,6 @@ public class BufferManager {
                 // Return to start
                 dbFile.seek(start);
             }
-        }
     }
 
     //readPage is only for type Page
@@ -858,8 +850,7 @@ public class BufferManager {
             // If it's a BTreeNode, we need to read the actual page from disk
             // (BTreeNodes and Pages share the bufferPages but shouldn't be confused)
         }
-        synchronized (dbFile) {
-            dbFile.seek(pageAddress);
+        dbFile.seek(pageAddress);
             Catalog catalog = Catalog.getInstance();
             //writes number of entries, start and end
             int numRows =  dbFile.readInt();
@@ -924,9 +915,8 @@ public class BufferManager {
                 page.addRecord(record);
                 dbFile.seek(start);
             }
-            addPageToBuffer(page);
-            return page;
-        }
+        addPageToBuffer(page);
+        return page;
     }
 
     public void saveToDisk() {
