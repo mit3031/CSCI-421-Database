@@ -8,16 +8,22 @@ import java.util.*;
 import java.io.File;
 
 /**
- * Performance test to compare insertion speed with indexing ON vs OFF
+ * Performance test for batch insertion with configurable indexing
  */
 public class PerformanceTest {
     
-    // Configure the number of records to insert
-    private static final int NUM_RECORDS = 10000;
+    // ============================================================
+    // TEST CONFIGURATION
+    // ============================================================
     
-    // Configure which tests to run
-    private static final boolean RUN_WITHOUT_INDEXING = false;
-    private static final boolean RUN_WITH_INDEXING = true;
+    // Configure the number of records to insert
+    private static final int NUM_RECORDS = 2000;
+    
+    // Configure whether B+ tree indexing is enabled
+    private static final boolean INDEXING_ENABLED = true;
+    
+    // Configure batch size (smaller = less memory, more operations)
+    private static final int BATCH_SIZE = 100;
     
     /**
      * Recursively deletes a directory and all its contents
@@ -84,147 +90,70 @@ public class PerformanceTest {
         String[] debugActive = new String[]{};
         Logger.initDebug(debugActive);
         
+        // Determine test configuration
+        String dbPath = INDEXING_ENABLED ? "perftest_index" : "perftest_noindex";
+        String tableName = INDEXING_ENABLED ? "test_table_index" : "test_table_noindex";
+        String indexingStatus = INDEXING_ENABLED ? "ENABLED" : "DISABLED";
+        
         System.out.println("\n========================================");
         System.out.println("B+ TREE INDEXING PERFORMANCE TEST");
         System.out.println("========================================");
         System.out.println("Records to insert: " + NUM_RECORDS);
-        System.out.println("Table schema: id INT (PK), value DOUBLE, name VARCHAR(5)");
-        System.out.println();
+        System.out.println("B+ Tree Indexing:  " + indexingStatus);
+        System.out.println("Table schema:      id INT (PK), value DOUBLE, name VARCHAR(5)");
+        System.out.println("========================================\n");
 
-        long timeWithoutIndexing = 0;
-        long timeWithIndexing = 0;
-
-        // ============================================================
-        // TEST 1: Insert WITHOUT indexing
-        // ============================================================
-        if (RUN_WITHOUT_INDEXING) {
-            System.out.println("TEST 1: Insertion WITHOUT B+ tree indexing");
-            System.out.println("--------------------");
-            try {
-                cleanupDatabase("perftest_noindex");
-                StorageManager.initDatabase("perftest_noindex", 1098, 5, false); // indexing = false
-                StorageManager store = StorageManager.getStorageManager();
-                
-                // Create table
-                List<Attribute> attrs = new ArrayList<>();
-                attrs.add(new Attribute("id", new IntegerDefinition(null, true, false, false), null));
-                attrs.add(new Attribute("value", new DoubleDefinition(false, false, false), null));
-                attrs.add(new Attribute("name", new VarCharDefinition(false, false, 5, false), null));
-                
-                TableSchema table = new TableSchema("test_table_noindex", attrs);
-                store.CreateTable(table);
-                
-                // Build batch INSERT command and measure time
-                System.out.println("  Building batch INSERT command...");
-                String batchInsert = buildBatchInsertCommand("test_table_noindex", 1, NUM_RECORDS);
-                System.out.println("  Executing batch INSERT with " + NUM_RECORDS + " rows...");
-                
-                long startTime = System.currentTimeMillis();
-                ParserDML.runCommand(batchInsert);
-                long endTime = System.currentTimeMillis();
-                timeWithoutIndexing = endTime - startTime;
-                
-                System.out.println("✓ Inserted " + NUM_RECORDS + " records");
-                System.out.println("  Time: " + timeWithoutIndexing + " ms");
-                System.out.println("  Average: " + String.format("%.3f", (double)timeWithoutIndexing / NUM_RECORDS) + " ms/record");
-                
-                store.shutdown();
-                
-            } catch (Exception e) {
-                System.out.println("✗ FAILED: " + e.getMessage());
-                e.printStackTrace();
-            }
-
-            // Small pause between tests
-            System.out.println();
-        } else {
-            System.out.println("TEST 1: SKIPPED (RUN_WITHOUT_INDEXING = false)");
-            System.out.println();
-        }
-
-        // ============================================================
-        // TEST 2: Insert WITH indexing
-        // ============================================================
-        if (RUN_WITH_INDEXING) {
-            System.out.println("TEST 2: Insertion WITH B+ tree indexing");
-            System.out.println("--------------------");
-            try {
-                cleanupDatabase("perftest_index");
-                StorageManager.initDatabase("perftest_index", 1098, 5, true); // indexing = true
-                StorageManager store = StorageManager.getStorageManager();
-                
-                // Create table (same schema)
-                List<Attribute> attrs = new ArrayList<>();
-                attrs.add(new Attribute("id", new IntegerDefinition(null, true, false, false), null));
-                attrs.add(new Attribute("value", new DoubleDefinition(false, false, false), null));
-                attrs.add(new Attribute("name", new VarCharDefinition(false, false, 5, false), null));
-                
-                TableSchema table = new TableSchema("test_table_index", attrs);
-                store.CreateTable(table);
-                
-                // Build batch INSERT command and measure time
-                System.out.println("  Building batch INSERT command...");
-                String batchInsert = buildBatchInsertCommand("test_table_index", 1, NUM_RECORDS);
-                System.out.println("  Executing batch INSERT with " + NUM_RECORDS + " rows...");
-                
-                long startTime = System.currentTimeMillis();
-                ParserDML.runCommand(batchInsert);
-                long endTime = System.currentTimeMillis();
-                timeWithIndexing = endTime - startTime;
-                
-                System.out.println("✓ Inserted " + NUM_RECORDS + " records");
-                System.out.println("  Time: " + timeWithIndexing + " ms");
-                System.out.println("  Average: " + String.format("%.3f", (double)timeWithIndexing / NUM_RECORDS) + " ms/record");
-                
-                store.shutdown();
-                
-            } catch (Exception e) {
-                System.out.println("✗ FAILED: " + e.getMessage());
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("TEST 2: SKIPPED (RUN_WITH_INDEXING = false)");
-        }
-
-        // ============================================================
-        // PERFORMANCE COMPARISON
-        // ============================================================
-        if (RUN_WITHOUT_INDEXING && RUN_WITH_INDEXING) {
-            System.out.println("\n========================================");
-            System.out.println("PERFORMANCE COMPARISON");
-            System.out.println("========================================");
-            System.out.println("Without indexing: " + timeWithoutIndexing + " ms");
-            System.out.println("With indexing:    " + timeWithIndexing + " ms");
+        try {
+            // Clean up and initialize database
+            cleanupDatabase(dbPath);
+            StorageManager.initDatabase(dbPath, 1098, 5, INDEXING_ENABLED);
+            StorageManager store = StorageManager.getStorageManager();
             
-            if (timeWithoutIndexing > 0 && timeWithIndexing > 0) {
-                long difference = Math.abs(timeWithIndexing - timeWithoutIndexing);
-                double percentDiff = ((double)difference / timeWithoutIndexing) * 100;
+            // Create table
+            List<Attribute> attrs = new ArrayList<>();
+            attrs.add(new Attribute("id", new IntegerDefinition(null, true, false, false), null));
+            attrs.add(new Attribute("value", new DoubleDefinition(false, false, false), null));
+            attrs.add(new Attribute("name", new VarCharDefinition(false, false, 5, false), null));
+            
+            TableSchema table = new TableSchema(tableName, attrs);
+            store.CreateTable(table);
+            
+            // Insert records in batches to reduce memory usage
+            System.out.println("Inserting " + NUM_RECORDS + " rows in batches of " + BATCH_SIZE + "...\n");
+            
+            long startTime = System.currentTimeMillis();
+            
+            int recordsInserted = 0;
+            while (recordsInserted < NUM_RECORDS) {
+                int batchSize = Math.min(BATCH_SIZE, NUM_RECORDS - recordsInserted);
+                String batchInsert = buildBatchInsertCommand(tableName, recordsInserted + 1, batchSize);
+                ParserDML.runCommand(batchInsert);
+                recordsInserted += batchSize;
                 
-                System.out.println("Difference:       " + difference + " ms");
-                
-                if (timeWithIndexing < timeWithoutIndexing) {
-                    System.out.println("Result:           B+ tree indexing is " + 
-                        String.format("%.1f", percentDiff) + "% FASTER");
-                } else if (timeWithIndexing > timeWithoutIndexing) {
-                    System.out.println("Result:           B+ tree indexing is " + 
-                        String.format("%.1f", percentDiff) + "% SLOWER");
-                } else {
-                    System.out.println("Result:           Equal performance");
+                // Progress indicator
+                if (recordsInserted % (BATCH_SIZE * 5) == 0 || recordsInserted == NUM_RECORDS) {
+                    System.out.println("  Inserted " + recordsInserted + " / " + NUM_RECORDS + " records...");
                 }
             }
-            System.out.println("========================================\n");
-        } else if (RUN_WITHOUT_INDEXING) {
+            
+            long endTime = System.currentTimeMillis();
+            long elapsed = endTime - startTime;
+            
+            // Display results
             System.out.println("\n========================================");
             System.out.println("TEST RESULTS");
             System.out.println("========================================");
-            System.out.println("Without indexing: " + timeWithoutIndexing + " ms");
+            System.out.println("✓ Successfully inserted " + NUM_RECORDS + " records");
+            System.out.println("  Total time:       " + elapsed + " ms");
+            System.out.println("  Average per row:  " + String.format("%.3f", (double)elapsed / NUM_RECORDS) + " ms/record");
+            System.out.println("  Throughput:       " + String.format("%.0f", (NUM_RECORDS * 1000.0) / elapsed) + " records/second");
             System.out.println("========================================\n");
-        } else if (RUN_WITH_INDEXING) {
-            System.out.println("\n========================================");
-            System.out.println("TEST RESULTS");
-            System.out.println("========================================");
-            System.out.println("With indexing:    " + timeWithIndexing + " ms");
-            System.out.println("========================================\n");
+            
+            store.shutdown();
+            
+        } catch (Exception e) {
+            System.out.println("\n✗ TEST FAILED: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
