@@ -6,6 +6,7 @@ import Common.Page;
 import StorageManager.StorageManager;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class Catalog {
@@ -194,13 +195,14 @@ public class Catalog {
      * n is the maximum number of pointers a node can hold
      * Formula: n = floor(PageSize / (SearchKeySize + PointerSize))
      */
-    public int calculateTreeOrder(AttributeDefinition def) {
+    public int calculateTreeOrder(AttributeDefinition def, String attributeName, String tableName) {
         int pageSize = this.pageSize;
         int pointerSize = 4;
         int searchKeySize = def.getByteSize();
 
         //Placeholder for metadata: 100 bytes
-        int n = (pageSize - 100) / (searchKeySize + pointerSize);
+        int metadata = (Integer.BYTES*7)+2+(attributeName.getBytes(StandardCharsets.UTF_8).length)+(tableName.getBytes(StandardCharsets.UTF_8).length);
+        int n = (pageSize - metadata) / (searchKeySize + pointerSize);
 
         return n;
     }
