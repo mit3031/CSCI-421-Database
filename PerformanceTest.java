@@ -13,7 +13,7 @@ import java.io.File;
 public class PerformanceTest {
     
     // Configure the number of records to insert
-    private static final int NUM_RECORDS = 500;
+    private static final int NUM_RECORDS = 1000;
     
     /**
      * Recursively deletes a directory and all its contents
@@ -76,7 +76,7 @@ public class PerformanceTest {
             attrs.add(new Attribute("value", new DoubleDefinition(false, false, false), null));
             attrs.add(new Attribute("name", new VarCharDefinition(false, false, 5, false), null));
             
-            TableSchema table = new TableSchema("test_table", attrs);
+            TableSchema table = new TableSchema("test_table_noindex", attrs);
             store.CreateTable(table);
             
             // Insert records and measure time
@@ -84,7 +84,7 @@ public class PerformanceTest {
             for (int i = 1; i <= NUM_RECORDS; i++) {
                 double value = i * 1.5;
                 String name = "n" + (i % 1000); // Simple string pattern
-                ParserDML.runCommand("INSERT test_table VALUES (" + i + " " + value + " \"" + name + "\");");
+                ParserDML.runCommand("INSERT test_table_noindex VALUES (" + i + " " + value + " \"" + name + "\");");
             }
             long endTime = System.currentTimeMillis();
             timeWithoutIndexing = endTime - startTime;
@@ -119,7 +119,7 @@ public class PerformanceTest {
             attrs.add(new Attribute("value", new DoubleDefinition(false, false, false), null));
             attrs.add(new Attribute("name", new VarCharDefinition(false, false, 5, false), null));
             
-            TableSchema table = new TableSchema("test_table", attrs);
+            TableSchema table = new TableSchema("test_table_index", attrs);
             store.CreateTable(table);
             
             // Insert records and measure time
@@ -127,7 +127,7 @@ public class PerformanceTest {
             for (int i = 1; i <= NUM_RECORDS; i++) {
                 double value = i * 1.5;
                 String name = "n" + (i % 1000); // Same string pattern
-                ParserDML.runCommand("INSERT test_table VALUES (" + i + " " + value + " \"" + name + "\");");
+                ParserDML.runCommand("INSERT test_table_index VALUES (" + i + " " + value + " \"" + name + "\");");
             }
             long endTime = System.currentTimeMillis();
             timeWithIndexing = endTime - startTime;
