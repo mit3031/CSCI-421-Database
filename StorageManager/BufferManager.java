@@ -242,9 +242,12 @@ public class BufferManager {
                 // If page address changed due to split, update the B+ tree
                 if (currentPage.getPageAddress() != originalPageAddress) {
                     Logger.log("updating search keys...");
+                    Logger.log("Num rows to update: " + currentPage.getNumRows());
                     for(int i = 0; i< currentPage.getNumRows(); i++){
                         ArrayList tup = currentPage.getRecord(i);
+
                         Object pKey = tup.get(pkIndex);
+                        Logger.log("Update pkey " + pKey + " in BM insert command");
                         rootNode.updateSearchKeysPage(pKey, currentPage.getPageAddress());
                     }
 
