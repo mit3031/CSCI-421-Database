@@ -60,7 +60,7 @@ public class StorageManager {
                 if (attr.getDefinition().getIsPrimary()) {
                     // Create B+ tree for primary key
                     AttributeTypeEnum pkType = attr.getDefinition().getType();
-                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition());
+                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition(), attr.getName(), table.getTableName());
                     
                     // Get a free page for the B+ tree root node
                     int bTreeRootAddress;
@@ -86,7 +86,7 @@ public class StorageManager {
                 } else if (attr.getDefinition().getIsUnique()) {
                     // Create B+ tree for UNIQUE constraint
                     AttributeTypeEnum uniqueType = attr.getDefinition().getType();
-                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition());
+                    int treeOrder = catalog.calculateTreeOrder(attr.getDefinition(), attr.getName(), table.getTableName());
                     
                     // Get a free page for the B+ tree root node
                     int bTreeRootAddress;
