@@ -227,8 +227,16 @@ public class BufferManager {
                 
                 // If page address changed due to split, update the B+ tree
                 if (currentPage.getPageAddress() != originalPageAddress) {
+                    Logger.log("updating search keys...");
+                    for(int i = 0; i< currentPage.getNumRows(); i++){
+                        ArrayList tup = currentPage.getRecord(i);
+                        Object pKey = tup.get(pkIndex);
+                        rootNode.updateSearchKeysPage(pKey, currentPage.getPageAddress());
+                    }
 
-                    rootNode.updateSearchKeysPage(primaryKey, currentPage.getPageAddress());
+                    //THIS IS SO IT
+                    //todo iterate thru all primary keys in page and call updateSearchKeys for all
+                    //rootNode.updateSearchKeysPage(primaryKey, currentPage.getPageAddress());
                 }
                 
                 currentPage.SetModified(true);

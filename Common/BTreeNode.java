@@ -225,6 +225,7 @@ public class BTreeNode implements Pages{
     public void updateSearchKeysPage(Object searchKey, Integer pageAddress){
         BufferManager bufferManager = BufferManager.getInstance();
         Catalog cat = Catalog.getInstance();
+        Logger.log("Updating location of search key " + searchKey + " in table " + address);
         Logger.log("First free add: " + cat.getFirstFreeAddress());
         try{
             boolean replaced = false;
@@ -237,7 +238,9 @@ public class BTreeNode implements Pages{
                     //Variable keyExists is only used for debugging
                     boolean keyExists = this.IndexEntries.containsKey(searchKey);
                     //variable is only used for debugging, treeMap.replace() returns null if the key didn't exist or if the value being replaced was null
+                    Logger.log("Replacing " + IndexEntries.get(searchKey) + " with " + pageAddress);
                     Object successfulReplace = this.IndexEntries.replace(searchKey, pageAddress);
+
                     replaced = true;
                     if(keyExists && successfulReplace == null){
                         Logger.log("Search key was not replaced as it does not exist");
