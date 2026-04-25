@@ -43,7 +43,7 @@ public class BTreeNode implements Pages{
     public int getPageAddress(){ updateLastUsed();return this.address;}
     public void SetModified(boolean modified){ updateLastUsed();this.modified = modified;}
     public boolean getModified(){ updateLastUsed();return this.modified;}
-    public Instant getLastUsed(){ updateLastUsed();return this.lastUsed;}
+    public Instant getLastUsed(){return this.lastUsed;}
             public void updateLastUsed(){this.lastUsed = Instant.now();}
     public Map<Object, Integer> getIndexEntries(){return this.IndexEntries;}
     public AttributeTypeEnum getSearchKeyType(){ updateLastUsed();return this.searchKeyType;}
@@ -90,7 +90,9 @@ public class BTreeNode implements Pages{
 
                 }
             if(!this.internal){
-                return this.lastPoint;
+                //return this.lastPoint;
+                Logger.log("Reached end of leaf node and did not find key");
+                return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
             } else{
                 Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).findPageToInsert(searchKey);
@@ -172,6 +174,7 @@ public class BTreeNode implements Pages{
 
             }
             if(this.internal){
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 bufferManager.selectBNode(this.lastPoint).insertIntoBTree(searchKey, pageAddress);
             }
         }catch(IOException e){
@@ -339,6 +342,7 @@ public class BTreeNode implements Pages{
 
                     // if the search key is less than the current search key in the node then go to the left of that node
                 } else if (searchKeyCompare < 0){
+                    Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).deleteFromUnqiueTree(searchKey);
                     // if the search key is equal to the current search key in the node then it is not unique and this should return false
                 }
@@ -358,6 +362,7 @@ public class BTreeNode implements Pages{
                     return false;
                 }
             } else{
+                Logger.log("Trying to get node at address "+ this.lastPoint + " for search key " + searchKey);
                 return bufferManager.selectBNode(this.lastPoint).deleteFromUnqiueTree(searchKey);
             }
         } catch(IOException e){
@@ -377,7 +382,8 @@ public class BTreeNode implements Pages{
         if (count >= numEntries || ( !internal && count >= numEntries -1 ) ){
             //put time as latest possible so that it's not gonna leave memory
             try {
-                Logger.log("Splitting B+Tree page " + this.address);
+                Logger.log("Splitting B+Tree page " + this.address + ". Size of node: " + this.IndexEntries.size() +
+                        ". N as per tile: " + numEntries);
                 lastUsed = Instant.MAX;
                 this.modified = true;
                 //need new page slot, get from catalog
@@ -410,20 +416,32 @@ public class BTreeNode implements Pages{
                         this.attributeName,
                         this.tableName
                 );
-                this.lastPoint = newPage;
+
+
+                Logger.log("Getting newly created page from BM: Address: " + newPage);
                 BTreeNode newNode = bm.selectBNode(newPage);
+
                 newNode.modified = true;
                 Logger.log("Splitting: Created new node to split into at address " + newPage);
                 //split records, right half into new node, and remove
                 ArrayList keys = new ArrayList<>(this.IndexEntries.keySet());
                 Object newNodeMin = keys.get( (int)Math.ceil(keys.size()/2.0));
-                for(int i = (int)Math.ceil(keys.size()/2.0); i<keys.size(); i++){
+                for(int i = (int)Math.ceil(keys.size()/2.0) + 1; i<keys.size(); i++){
                     //copy 2nd half to new
                     int oldVal = this.IndexEntries.get(keys.get(i));
                     newNode.IndexEntries.put(keys.get(i), oldVal);
                     this.IndexEntries.remove(keys.get(i));
                 }
                 Logger.log("Added values to new node!");
+                if(!internal) {
+                    this.lastPoint = newPage;
+                }
+                else{
+                    this.lastPoint = this.IndexEntries.get(keys.get((int)Math.ceil(keys.size()/2.0)));
+                    this.IndexEntries.remove(keys.get((int)Math.ceil(keys.size()/2.0)));
+                }
+
+
                 //update parents of new children nodes of new node GIVEN INTERNAL
                 if(internal) {
                     for (int childIndex : newNode.IndexEntries.values()) {
@@ -438,6 +456,7 @@ public class BTreeNode implements Pages{
                 //update up tree
                 int parentToUpdate = this.myParent;
                 Logger.log("Copied entries from this node to new node");
+
                 if(parentToUpdate != -1){
                     Logger.log("Node was not parent, no additional creation necessary");
                     //case where we have a parent
@@ -493,11 +512,13 @@ public class BTreeNode implements Pages{
                             this.attributeName,
                             this.tableName
                     );
+                    Logger.log("Getting new Root from BM...");
                     BTreeNode newRoot = bm.selectBNode(newHeadPage);
                     newRoot.modified = true;
                     Logger.log("Created new Root Node!");
                     //based on my observations, key should be last (max) value of this page
-                    Object maxKey = keys.get((int)Math.ceil(keys.size()/2.0 -1));
+                    Object maxKey = IndexEntries.keySet().toArray()[IndexEntries.size()-1];
+                    Logger.log("Max Key of Table: " + maxKey);
                     this.lastPoint = this.IndexEntries.get(maxKey);
                     this.IndexEntries.remove(maxKey);
                     newRoot.IndexEntries.put(maxKey, this.address);

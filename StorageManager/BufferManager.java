@@ -2,6 +2,7 @@ package StorageManager;
 
 import AttributeInfo.*;
 import Common.BTreeNode;
+import Common.Logger;
 import Common.Page;
 import Catalog.TableSchema;
 import Catalog.BTreeSchema;
@@ -94,6 +95,7 @@ public class BufferManager {
      */
     public Page select(int address, String tableName) throws Exception {
         Catalog catalog = Catalog.getInstance();
+        Logger.log("BM Trying to read tablename " + tableName + " Page at address " + address);
         if(!catalog.tableExists(tableName)){
             throw new Exception("Table " + tableName + " does not exist");
         }
@@ -103,6 +105,7 @@ public class BufferManager {
     }
 
     public BTreeNode selectBNode(int address) throws IOException {
+        Logger.log("Buffer Manager received message to read BNode at addr " + address);
         BTreeNode bTreeNode = readBTreeNode(address);
         bTreeNode.updateLastUsed();
         return bTreeNode;
@@ -522,6 +525,8 @@ public class BufferManager {
                 }
             }
         }
+        Logger.log("Least recently used page: " + leastRecentlyUsedPage);
+        Logger.log("Least recently used Page TIme: " + leastRecentlyUsedTime);
         return leastRecentlyUsedPage;
     }
 
@@ -578,7 +583,10 @@ public class BufferManager {
             }
             //add overhead info like myParent
             currentNode.writeInt(treeNode.getIndexEntries().size());
+            Logger.log("WRITING PAGE " + treeNode.getPageAddress());
+            Logger.log("Size Written: " + treeNode.getIndexEntries().size());
             currentNode.writeInt(treeNode.getNumEntries());
+            Logger.log("n Written: " + treeNode.getNumEntries());
             currentNode.write((byte) (treeNode.isInternal() ? 1: 0));
             currentNode.writeInt(treeNode.getMyParent());
             //get type of search key
@@ -595,24 +603,33 @@ public class BufferManager {
             for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
                 switch (type) {
                     case INTEGER:
-                        currentNode.writeInt((int) entry.getKey());
+                        currentNode.writeInt(getKey(entry));
+                        //Logger.log("Writing Key " + (int) entry.getKey());
                         break;
                     case DOUBLE:
                         currentNode.writeDouble((double) entry.getKey());
+                        //Logger.log("Writing Key " + (double) entry.getKey());
                         break;
                     case BOOLEAN:
                         currentNode.write((byte) ((boolean) entry.getKey() ? 1 : 0));
+                        //Logger.log("Writing Key " + (boolean) entry.getKey());
                         break;
                     case CHAR, VARCHAR:
                         currentNode.writeInt(((String) entry.getKey()).length());
                         currentNode.write(((String) entry.getKey()).getBytes(StandardCharsets.UTF_8));
+                        //Logger.log("Writing Key " + ((String) entry.getKey()));
                         break;
                 }
                 currentNode.writeInt(entry.getValue());
             }
+            Logger.log("How far into thing: " + currentNode.getFilePointer());
         } catch (RuntimeException | IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static int getKey(Map.Entry<Object, Integer> entry) {
+        return (int) entry.getKey();
     }
 
     private BTreeNode readBTreeNode(Integer pageAddress) throws IOException {
@@ -622,7 +639,10 @@ public class BufferManager {
         try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")) {
             currentPage.seek(pageAddress);
             Integer size = currentPage.readInt();
+            Logger.log("READING ADDRESS " + pageAddress);
+            Logger.log("Size read: " + size);
             Integer numEntries = currentPage.readInt();
+            Logger.log("N Read: " + numEntries);
             Boolean isInternal = currentPage.read() == 1;
             Integer myParent = currentPage.readInt();
             AttributeTypeEnum searchKeyType = getEnumFromCode(currentPage.readInt());
@@ -662,6 +682,10 @@ public class BufferManager {
             }
             addPageToBuffer(bNode);
             bNode.updateLastUsed();
+//            for(Object Entry: bNode.getIndexEntries().keySet()){
+//                Logger.log(Entry.toString());
+//            }
+
             return bNode;
         }
     }
