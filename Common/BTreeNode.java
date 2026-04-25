@@ -122,6 +122,8 @@ public class BTreeNode implements Pages{
                 } else if (searchKeyCompare < 0){
                     Logger.log("Trying to get node at address "+ this.IndexEntries.get(nodeSearchKey) + " for search key " + searchKey);
                     return bufferManager.selectBNode(this.IndexEntries.get(nodeSearchKey)).insertIntoBTree(searchKey, tableName);
+                } else if (searchKeyCompare == 0){
+                    throw new Exception("Primary key error: Primary key " + searchKey + " already exists");
                 }
 
             }
@@ -146,7 +148,7 @@ public class BTreeNode implements Pages{
             Logger.log("Error while attempting to readBTreeNode when inserting into BTree!");
             throw new RuntimeException(e);
         } catch (Exception e) {
-            Logger.log("Error while attempting to find first page of table");
+            Logger.log("Error while attempting to find first page of table or primary key");
             throw new RuntimeException(e);
         }
     }
