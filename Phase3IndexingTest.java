@@ -47,7 +47,7 @@ public class Phase3IndexingTest {
     }
     
     public static void main(String[] args) {
-        String[] debugActive = new String[]{"--debug"};
+        String[] debugActive = new String[]{};
         Logger.initDebug(debugActive);
         
         int passedTests = 0;

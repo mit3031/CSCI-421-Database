@@ -23,6 +23,7 @@ public class BufferManager {
     private static BufferManager bufferManager;
     private int bufferSize;
     private final String dbLocation;
+    private RandomAccessFile dbFile; // Persistent file handle
 
     public static void init(int bufferSize, String dbLocation) {
         if (bufferManager == null) {
@@ -41,6 +42,11 @@ public class BufferManager {
         this.bufferPages  = new HashMap<>();
         this.bufferSize = bufferSize;
         this.dbLocation = dbLocation;
+        try {
+            this.dbFile = new RandomAccessFile(dbLocation, "rw");
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException("Failed to open database file: " + e.getMessage(), e);
+        }
     }
 
     public void newPage(int Address, String tableName) throws IOException {
@@ -63,7 +69,11 @@ public class BufferManager {
         Catalog catalog = Catalog.getInstance();
         int pageAddress = catalog.getAddressOfPage(tableName);
         //set all fields to blank and set modified to true
-        Page page = (Page) this.bufferPages.get(pageAddress);
+        Pages bufferedPage = this.bufferPages.get(pageAddress);
+        Page page = null;
+        if (bufferedPage instanceof Page) {
+            page = (Page) bufferedPage;
+        }
         if (page == null) {
             if (this.bufferPages.size()+1 > this.bufferSize) {
                 removeLRUPage();
@@ -75,7 +85,11 @@ public class BufferManager {
         //while there is a next page set it's tableName to null signifying empty
         while (page.getNextPage() != -1) {
             pageAddress = page.getNextPage();
-            page = (Page) this.bufferPages.get(pageAddress);
+            bufferedPage = this.bufferPages.get(pageAddress);
+            page = null;
+            if (bufferedPage instanceof Page) {
+                page = (Page) bufferedPage;
+            }
             if (page == null) {
                 if (this.bufferPages.size()+1 > this.bufferSize) {
                     removeLRUPage();
@@ -323,6 +337,25 @@ public class BufferManager {
                 currentPage.SetModified(true);
                 currentPage.updateLastUsed();
             }
+            
+            // Phase 3: After successful insertion, update UNIQUE constraint B+ trees (excluding primary key)
+            if (useIndexing) {
+                for (int i = 0; i < attributes.size(); i++) {
+                    Attribute attr = attributes.get(i);
+                    // Update B+ tree for UNIQUE attributes (but not primary key - already handled by insertIntoBTree)
+                    if (attr.getDefinition().getIsUnique() && !attr.getDefinition().getIsPrimary()) {
+                        BTreeSchema uniqueIndex = table.getIndex(attr.getName());
+                        if (uniqueIndex != null && uniqueIndex.getRootNodeAddress() != -1) {
+                            Object uniqueValue = record.get(i);
+                            if (uniqueValue != null) {
+                                BTreeNode uniqueRootNode = selectBNode(uniqueIndex.getRootNodeAddress());
+                                // Now actually insert into the unique tree
+                                uniqueRootNode.insertIntoUnqiueTree(uniqueValue);
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         return currentPage.getPageAddress();
@@ -515,6 +548,15 @@ public class BufferManager {
         }
         this.bufferPages.clear();
     }
+    
+    /**
+     * Close the database file handle
+     */
+    public void closeDatabase() throws IOException {
+        if (dbFile != null) {
+            dbFile.close();
+        }
+    }
 
     /**
      * Finds the address of the least recently used page and returns it
@@ -582,60 +624,60 @@ public class BufferManager {
 
     //DO NOT CALL buffer manager handles this
     private void writeBTreeNode(BTreeNode treeNode) throws FileNotFoundException {
-        try (RandomAccessFile currentNode = new RandomAccessFile(dbLocation, "rw")) {
-            currentNode.seek(treeNode.getPageAddress());
-            if (treeNode.getMyParent() == null) {
-                Catalog catalog = Catalog.getInstance();
-                catalog.addFirstFreePage(treeNode.getPageAddress());
-                for(int i = 0; i<catalog.getPageSize(); i++){
-                    currentNode.write((byte)0);
+        try {
+            dbFile.seek(treeNode.getPageAddress());
+                if (treeNode.getMyParent() == null) {
+                    Catalog catalog = Catalog.getInstance();
+                    catalog.addFirstFreePage(treeNode.getPageAddress());
+                    for(int i = 0; i<catalog.getPageSize(); i++){
+                        dbFile.write((byte)0);
+                    }
+                    return; // Exit early after writing empty page
                 }
-                return; // Exit early after writing empty page
-            }
-            //add overhead info like myParent
-            currentNode.writeInt(treeNode.getIndexEntries().size());
-            //Logger.log("WRITING PAGE " + treeNode.getPageAddress());
-            //Logger.log("Size Written: " + treeNode.getIndexEntries().size());
-            currentNode.writeInt(treeNode.getNumEntries());
-            //Logger.log("n Written: " + treeNode.getNumEntries());
-            //Logger.log("Parent: " + treeNode.getMyParent());
-            currentNode.write((byte) (treeNode.isInternal() ? 1: 0));
-            currentNode.writeInt(treeNode.getMyParent());
-            //get type of search key
-            AttributeTypeEnum type = treeNode.getSearchKeyType();
-            currentNode.writeInt(getEnumCode(type));
-            currentNode.writeInt(treeNode.getLastPoint());
-            //write first length of attributeName then actual string
-            currentNode.writeInt((treeNode.getAttributeName()).length());
-            currentNode.write((treeNode.getAttributeName()).getBytes(StandardCharsets.UTF_8));
-            //write first length of tableName then actual string
-            currentNode.writeInt(treeNode.returnTableName().length());
-            currentNode.write(treeNode.returnTableName().getBytes(StandardCharsets.UTF_8));
-            currentNode.write((byte) (treeNode.getIsRightMost() ? 1: 0));
-            //write each indexEntry in searchkey, address order.
-            for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
-                switch (type) {
-                    case INTEGER:
-                        currentNode.writeInt(getKey(entry));
-                        //Logger.log("Writing Key " + (int) entry.getKey());
-                        break;
-                    case DOUBLE:
-                        currentNode.writeDouble((double) entry.getKey());
-                        //Logger.log("Writing Key " + (double) entry.getKey());
-                        break;
-                    case BOOLEAN:
-                        currentNode.write((byte) ((boolean) entry.getKey() ? 1 : 0));
-                        //Logger.log("Writing Key " + (boolean) entry.getKey());
-                        break;
-                    case CHAR, VARCHAR:
-                        currentNode.writeInt(((String) entry.getKey()).length());
-                        currentNode.write(((String) entry.getKey()).getBytes(StandardCharsets.UTF_8));
-                        //Logger.log("Writing Key " + ((String) entry.getKey()));
-                        break;
+                //add overhead info like myParent
+                dbFile.writeInt(treeNode.getIndexEntries().size());
+                //Logger.log("WRITING PAGE " + treeNode.getPageAddress());
+                //Logger.log("Size Written: " + treeNode.getIndexEntries().size());
+                dbFile.writeInt(treeNode.getNumEntries());
+                //Logger.log("n Written: " + treeNode.getNumEntries());
+                //Logger.log("Parent: " + treeNode.getMyParent());
+                dbFile.write((byte) (treeNode.isInternal() ? 1: 0));
+                dbFile.writeInt(treeNode.getMyParent());
+                //get type of search key
+                AttributeTypeEnum type = treeNode.getSearchKeyType();
+                dbFile.writeInt(getEnumCode(type));
+                dbFile.writeInt(treeNode.getLastPoint());
+                //write first length of attributeName then actual string
+                dbFile.writeInt((treeNode.getAttributeName()).length());
+                dbFile.write((treeNode.getAttributeName()).getBytes(StandardCharsets.UTF_8));
+                //write first length of tableName then actual string
+                dbFile.writeInt(treeNode.returnTableName().length());
+                dbFile.write(treeNode.returnTableName().getBytes(StandardCharsets.UTF_8));
+                dbFile.write((byte) (treeNode.getIsRightMost() ? 1: 0));
+                //write each indexEntry in searchkey, address order.
+                for (Map.Entry<Object, Integer> entry : treeNode.getIndexEntries().entrySet()) {
+                    switch (type) {
+                        case INTEGER:
+                            dbFile.writeInt(getKey(entry));
+                            //Logger.log("Writing Key " + (int) entry.getKey());
+                            break;
+                        case DOUBLE:
+                            dbFile.writeDouble((double) entry.getKey());
+                            //Logger.log("Writing Key " + (double) entry.getKey());
+                            break;
+                        case BOOLEAN:
+                            dbFile.write((byte) ((boolean) entry.getKey() ? 1 : 0));
+                            //Logger.log("Writing Key " + (boolean) entry.getKey());
+                            break;
+                        case CHAR, VARCHAR:
+                            dbFile.writeInt(((String) entry.getKey()).length());
+                            dbFile.write(((String) entry.getKey()).getBytes(StandardCharsets.UTF_8));
+                            //Logger.log("Writing Key " + ((String) entry.getKey()));
+                            break;
+                    }
+                    dbFile.writeInt(entry.getValue());
                 }
-                currentNode.writeInt(entry.getValue());
-            }
-            //Logger.log("How far into thing: " + currentNode.getFilePointer());
+                //Logger.log("How far into thing: " + dbFile.getFilePointer());
         } catch (RuntimeException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -649,49 +691,48 @@ public class BufferManager {
         if (this.bufferPages.containsKey(pageAddress)) {
             return (BTreeNode) this.bufferPages.get(pageAddress);
         }
-        try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")) {
-            currentPage.seek(pageAddress);
-            Integer size = currentPage.readInt();
+        dbFile.seek(pageAddress);
+            Integer size = dbFile.readInt();
             //Logger.log("READING ADDRESS " + pageAddress);
             //Logger.log("Size read: " + size);
-            Integer numEntries = currentPage.readInt();
+            Integer numEntries = dbFile.readInt();
             //Logger.log("N Read: " + numEntries);
-            Boolean isInternal = currentPage.read() == 1;
-            Integer myParent = currentPage.readInt();
-            AttributeTypeEnum searchKeyType = getEnumFromCode(currentPage.readInt());
-            Integer lastPoint = currentPage.readInt();
+            Boolean isInternal = dbFile.read() == 1;
+            Integer myParent = dbFile.readInt();
+            AttributeTypeEnum searchKeyType = getEnumFromCode(dbFile.readInt());
+            Integer lastPoint = dbFile.readInt();
             //read length of attributeName then read that many bits
-            Integer length = currentPage.readInt();
+            Integer length = dbFile.readInt();
             byte[] varchar = new byte[length];
-            currentPage.readFully(varchar);
+            dbFile.readFully(varchar);
             String attributeName = new String(varchar, StandardCharsets.UTF_8);
             //read length of tableName then read that many bits
-            Integer tableLen = currentPage.readInt();
+            Integer tableLen = dbFile.readInt();
             byte[] varchars = new byte[tableLen];
-            currentPage.readFully(varchars);
+            dbFile.readFully(varchars);
             String tableName = new String(varchars, StandardCharsets.UTF_8);
-            boolean isRightMost = currentPage.read() == 1;
+            boolean isRightMost = dbFile.read() == 1;
             BTreeNode bNode = new BTreeNode(numEntries, pageAddress, false, isInternal, myParent, searchKeyType, lastPoint, attributeName, tableName, isRightMost);
             for(int i = 0; i < size; i++) {
                 Object Key = null;
                 switch (searchKeyType) {
                     case INTEGER:
-                        Key = currentPage.readInt();
+                        Key = dbFile.readInt();
                         break;
                     case DOUBLE:
-                        Key = currentPage.readDouble();
+                        Key = dbFile.readDouble();
                         break;
                     case BOOLEAN:
-                        Key = currentPage.read() == 1;
+                        Key = dbFile.read() == 1;
                         break;
                     case CHAR, VARCHAR:
-                        Integer indexLength = currentPage.readInt();
+                        Integer indexLength = dbFile.readInt();
                         byte[] chars = new byte[indexLength];
-                        currentPage.readFully(chars);
+                        dbFile.readFully(chars);
                         Key = new String(chars, StandardCharsets.UTF_8);
                         break;
                 }
-                Integer Value = currentPage.readInt();
+                Integer Value = dbFile.readInt();
                 bNode.insertIndex(Key, Value);
             }
             addPageToBuffer(bNode);
@@ -700,29 +741,27 @@ public class BufferManager {
 //                Logger.log(Entry.toString());
 //            }
 
-            return bNode;
-        }
+        return bNode;
     }
 
     //DO NOT CALL buffer manager handles this
     private void writePage(Page page) throws IOException {
         //Logger.log("Writing data page " + page.getPageAddress());
-        try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "rw")){
-            currentPage.seek(page.getPageAddress());
+        dbFile.seek(page.getPageAddress());
             Catalog catalog = Catalog.getInstance();
             if (page.getTableName() == null) {
                 catalog.addFirstFreePage(page.getPageAddress());
                 for(int i = 0; i<catalog.getPageSize(); i++){
-                    currentPage.write((byte)0);
+                    dbFile.write((byte)0);
                 }
                 return; // Exit early after writing empty page
             }
 
             // Write page header (4 integers = 16 bytes)
-            currentPage.writeInt(page.getNumRows());
-            currentPage.writeInt(page.getFreeSpaceStart());
-            currentPage.writeInt(page.getFreeSpaceEnd());
-            currentPage.writeInt(page.getNextPage());
+            dbFile.writeInt(page.getNumRows());
+            dbFile.writeInt(page.getFreeSpaceStart());
+            dbFile.writeInt(page.getFreeSpaceEnd());
+            dbFile.writeInt(page.getNextPage());
 
             TableSchema table = catalog.getTable(page.getTableName());
             List<Attribute> attributes = table.getAttributes();
@@ -756,15 +795,15 @@ public class BufferManager {
                 // Save directory position and write offset and length
                 end = end-recordLength;
                 fixedEnd    += end;
-                currentPage.writeInt(end);
-                currentPage.writeInt(recordLength);
-                long start = currentPage.getFilePointer();
+                dbFile.writeInt(end);
+                dbFile.writeInt(recordLength);
+                long start = dbFile.getFilePointer();
 
                 // Seek to where record data will be written
-                currentPage.seek(end);
+                dbFile.seek(end);
 
                 // Write null bit array
-                currentPage.writeInt(nullBitArray);
+                dbFile.writeInt(nullBitArray);
 
                 // Write record data
                 for (int j = 0; j<record.size(); j++) {
@@ -772,60 +811,64 @@ public class BufferManager {
                     if ((nullBitArray & bit) == 0) {
                         switch (attributes.get(j).getDefinition().getType()) {
                             case INTEGER:
-                                currentPage.writeInt((int) record.get(j));
+                                dbFile.writeInt((int) record.get(j));
                                 break;
                             case DOUBLE:
-                                currentPage.writeDouble((double) record.get(j));
+                                dbFile.writeDouble((double) record.get(j));
                                 break;
                             case BOOLEAN:
-                                currentPage.write((byte) ((boolean) record.get(j) ? 1 : 0));
+                                dbFile.write((byte) ((boolean) record.get(j) ? 1 : 0));
                                 break;
                             case CHAR:
-                                currentPage.write(((String) record.get(j)).getBytes(StandardCharsets.UTF_8));
+                                dbFile.write(((String) record.get(j)).getBytes(StandardCharsets.UTF_8));
                                 break;
                             case VARCHAR:
-                                currentPage.writeInt((int)fixedEnd);
-                                currentPage.writeInt(((String) record.get(j)).getBytes(StandardCharsets.UTF_8).length);
-                                long currentLoc = currentPage.getFilePointer();
-                                currentPage.seek(fixedEnd);
-                                currentPage.write(((String)record.get(j)).getBytes());
-                                fixedEnd = currentPage.getFilePointer();
-                                currentPage.seek(currentLoc);
+                                dbFile.writeInt((int)fixedEnd);
+                                dbFile.writeInt(((String) record.get(j)).getBytes(StandardCharsets.UTF_8).length);
+                                long currentLoc = dbFile.getFilePointer();
+                                dbFile.seek(fixedEnd);
+                                dbFile.write(((String)record.get(j)).getBytes());
+                                fixedEnd = dbFile.getFilePointer();
+                                dbFile.seek(currentLoc);
                                 break;
                         }
                     }
                 }
                 // Return to start
-                currentPage.seek(start);
+                dbFile.seek(start);
             }
-        }
     }
 
     //readPage is only for type Page
     private Page readPage(int pageAddress, String tableName) throws IOException{
         if (this.bufferPages.containsKey(pageAddress)) {
-            return (Page) this.bufferPages.get(pageAddress);
+            Pages page = this.bufferPages.get(pageAddress);
+            // Ensure we're returning a Page, not a BTreeNode
+            if (page instanceof Page) {
+                return (Page) page;
+            }
+            // If it's a BTreeNode, we need to read the actual page from disk
+            // (BTreeNodes and Pages share the bufferPages but shouldn't be confused)
         }
-        try (RandomAccessFile currentPage = new RandomAccessFile(dbLocation, "r")){
-            currentPage.seek(pageAddress);
+        dbFile.seek(pageAddress);
             Catalog catalog = Catalog.getInstance();
             //writes number of entries, start and end
-            int numRows =  currentPage.readInt();
-            int freeSpaceStart = currentPage.readInt();
-            int freeSpaceEnd = currentPage.readInt();
-            int nextPage = currentPage.readInt();
+            int numRows =  dbFile.readInt();
+            int freeSpaceStart = dbFile.readInt();
+            int freeSpaceEnd = dbFile.readInt();
+            int nextPage = dbFile.readInt();
             Page page = new Page(numRows, pageAddress,nextPage, freeSpaceStart, freeSpaceEnd, false, tableName);
             TableSchema table = catalog.getTable(tableName);
             List<Attribute> attributes = table.getAttributes();
             //loop for every record
             int end = freeSpaceEnd;
             for (int i = 0; i < numRows; i++) {
-                int recordStart = currentPage.readInt();
-                int recordLength = currentPage.readInt();
-                long start = currentPage.getFilePointer();
+                int recordStart = dbFile.readInt();
+                int recordLength = dbFile.readInt();
+                long start = dbFile.getFilePointer();
                 ArrayList<Object> record = new ArrayList<Object>();
-                currentPage.seek(recordStart);
-                int nullBitArray = currentPage.readInt();
+                dbFile.seek(recordStart);
+                int nullBitArray = dbFile.readInt();
                 //loop through and read and save record data.
                 for (int j = 0; j<table.getAttributes().size(); j++) {
                     int bit = (int)Math.pow(2,j);
@@ -833,35 +876,35 @@ public class BufferManager {
                     if ((nullBitArray & bit) == 0) {
                         switch (attributes.get(j).getDefinition().getType()) {
                             case INTEGER:
-                                record.add(currentPage.readInt());
+                                record.add(dbFile.readInt());
                                 break;
                             case DOUBLE:
-                                record.add(currentPage.readDouble());
+                                record.add(dbFile.readDouble());
                                 break;
                             case BOOLEAN:
-                                record.add(currentPage.read() == 1 ? true : false);
+                                record.add(dbFile.read() == 1 ? true : false);
                                 break;
                             case CHAR:
                                 byte[] b = new byte[attributes.get(j).getDefinition().getByteSize()];
-                                currentPage.readFully(b);
+                                dbFile.readFully(b);
                                 record.add(new String(b, StandardCharsets.UTF_8));
                                 break;
                             case VARCHAR:
                                 // Read pointer and length from record
-                                int varcharPointer = currentPage.readInt();
-                                int varcharLength = currentPage.readInt();
+                                int varcharPointer = dbFile.readInt();
+                                int varcharLength = dbFile.readInt();
 
                                 // Save current position
-                                long currentPos = currentPage.getFilePointer();
+                                long currentPos = dbFile.getFilePointer();
 
                                 // Seek to VARCHAR data at end of page
-                                currentPage.seek(varcharPointer);
+                                dbFile.seek(varcharPointer);
                                 byte[] varchar = new byte[varcharLength];
-                                currentPage.readFully(varchar);
+                                dbFile.readFully(varchar);
                                 record.add(new String(varchar, StandardCharsets.UTF_8));
 
                                 // Return to record position
-                                currentPage.seek(currentPos);
+                                dbFile.seek(currentPos);
                                 break;
                         }
                     } else {
@@ -870,11 +913,10 @@ public class BufferManager {
                     }
                 }
                 page.addRecord(record);
-                currentPage.seek(start);
+                dbFile.seek(start);
             }
-            addPageToBuffer(page);
-            return page;
-        }
+        addPageToBuffer(page);
+        return page;
     }
 
     public void saveToDisk() {
